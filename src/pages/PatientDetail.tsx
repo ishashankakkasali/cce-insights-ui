@@ -227,6 +227,12 @@ export default function PatientDetail() {
                     <div className="h-2.5 w-2.5 rounded-full border-2 border-gray-300 bg-white" />
                     <span className="text-xs text-gray-600">Not started</span>
                   </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700">
+                      Mandatory
+                    </span>
+                    <span className="text-xs text-gray-600">Required step (must)</span>
+                  </div>
                 </div>
 
                 <div className="space-y-0">
@@ -244,21 +250,21 @@ export default function PatientDetail() {
                       if (!superseded) visibleRootIdx.add(i);
                     });
 
-                    return journey.filter((step, i, arr) => {
-                      if (step.status !== 'NOT_STARTED') return true;
+                    // A NOT_STARTED step is hidden only if its own root branch was superseded —
+                    // never merely because its parent action completed. Compute visibility in a
+                    // single forward pass so it cascades correctly to any nesting depth (a
+                    // NOT_STARTED step inherits its nearest ancestor's visibility).
+                    const keep = journey.map(() => true);
+                    journey.forEach((step, i) => {
+                      if (step.status !== 'NOT_STARTED') return;
                       const depth = step.depth ?? 0;
-                      if (depth === 0) return visibleRootIdx.has(i);
-                      // Sub-step: find nearest ancestor
+                      if (depth === 0) { keep[i] = visibleRootIdx.has(i); return; }
                       for (let j = i - 1; j >= 0; j--) {
-                        if ((arr[j].depth ?? 0) < depth) {
-                          // Hide if parent is completed OR parent root was filtered out
-                          if (arr[j].status === 'COMPLETED') return false;
-                          if (arr[j].status === 'NOT_STARTED' && !visibleRootIdx.has(j)) return false;
-                          break;
-                        }
+                        if ((journey[j].depth ?? 0) < depth) { keep[i] = keep[j]; break; }
                       }
-                      return true;
                     });
+
+                    return journey.filter((_step, i) => keep[i]);
                   })().map((step, i, arr) => {
                     const hasDeviation = deviationActionIds.has(step.actionId);
                     const displayStatus: JourneyDisplayStatus = hasDeviation && step.status !== 'COMPLETED' && step.status !== 'SKIPPED'
@@ -269,11 +275,17 @@ export default function PatientDetail() {
                     const isSubStep = depth > 0;
                     const isDeviation = displayStatus === 'DEVIATION';
                     const isNotStarted = displayStatus === 'NOT_STARTED';
+                    const isOutstandingMandatory = step.requiredBehavior === 'must' && !isDeviation
+                      && displayStatus !== 'COMPLETED' && displayStatus !== 'SKIPPED';
 
                     return (
                       <div
                         key={`${proto.protocolInstanceId}-j-${i}`}
-                        className={`flex gap-3 py-2.5 ${isDeviation ? 'rounded-lg bg-red-50 border border-red-200' : ''}`}
+                        className={`flex gap-3 py-2.5 ${
+                          isDeviation ? 'rounded-lg bg-red-50 border border-red-200'
+                            : isOutstandingMandatory ? 'rounded-lg bg-purple-50 border border-purple-100'
+                            : ''
+                        }`}
                         style={{ paddingLeft: `${depth * 24}px` }}
                       >
                         <div className="flex flex-col items-center">
@@ -290,6 +302,11 @@ export default function PatientDetail() {
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${info.bg} ${info.text}`}>
                               {info.label}
                             </span>
+                            {step.requiredBehavior === 'must' && (
+                              <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700">
+                                Mandatory
+                              </span>
+                            )}
 
                             {step.completionCount > 1 && (
                               <span className="text-xs text-gray-400">×{step.completionCount}</span>
