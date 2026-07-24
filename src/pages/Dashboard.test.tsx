@@ -19,6 +19,8 @@ vi.mock('../hooks/useFacilities', () => ({
 const referralsKpi = { totalReferralsReceived: 5 };
 vi.mock('../hooks/useDashboard', () => ({
   useReferralsKpi: () => ({ data: referralsKpi, isLoading: false }),
+  // RI-53 — the "Patients Received by HIE" indicator reads /dashboard/overview.
+  useDashboardOverview: () => ({ data: { patientsReceivedHIE: 2639 }, isLoading: false }),
 }));
 
 function renderDashboard() {
@@ -37,5 +39,22 @@ describe('Dashboard — RI-51 Total Referrals', () => {
     // 5 = event count from the shared KPI; the Facility Ranking column + Facilities card show the same.
     expect(screen.getByText('5')).toBeInTheDocument();
     expect(screen.getByText('referrals received by HIE')).toBeInTheDocument();
+  });
+});
+
+describe('Dashboard — RI-53 Patients Received by HIE', () => {
+  it('renders the retained Patients Received by HIE indicator from /dashboard/overview', () => {
+    renderDashboard();
+    expect(screen.getByText('Patients Received by HIE')).toBeInTheDocument();
+    expect(screen.getByText('2,639')).toBeInTheDocument();
+    expect(screen.getByText('distinct protocol-tracked patients')).toBeInTheDocument();
+  });
+
+  it('colour-codes the Total Facilities active/inactive breakdown (green / red)', () => {
+    renderDashboard();
+    const active = screen.getByText('3 active');
+    const inactive = screen.getByText('5 inactive');
+    expect(active).toHaveClass('text-green-600');
+    expect(inactive).toHaveClass('text-red-600');
   });
 });

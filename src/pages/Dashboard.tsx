@@ -1,16 +1,17 @@
-import { useMemo, type ComponentType } from 'react';
+import { useMemo, type ComponentType, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ClipboardDocumentCheckIcon,
   BuildingOffice2Icon,
   ArrowTrendingUpIcon,
   ArrowsRightLeftIcon,
+  UserGroupIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../components/shared/PageHeader';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { rateTone, type Tone } from '../components/shared/KpiCard';
 import { useFacilityActivitySummary, useAdoptionKpis, useFacilityRanking } from '../hooks/useFacilities';
-import { useReferralsKpi } from '../hooks/useDashboard';
+import { useReferralsKpi, useDashboardOverview } from '../hooks/useDashboard';
 import { formatNumber, formatPercentage } from '../utils/formatters';
 
 const TONE_COLOR: Record<Tone, string> = {
@@ -26,7 +27,9 @@ interface Indicator {
   title: string;
   value: string;
   tone: Tone;
-  context: string;
+  context: ReactNode;
+  /** RI-53 — optional override for the context line size (e.g. larger active/inactive text). */
+  contextClass?: string;
 }
 
 // RI-38 — the Dashboard is only high-level NATIONAL indicators. Since every indicator drills into the
@@ -37,6 +40,10 @@ export default function Dashboard() {
   const complianceRanking = useFacilityRanking({ rankBy: 'complianceRate', order: 'desc', limit: 1000 });
   const facilities = useFacilityActivitySummary();
   const adoption = useAdoptionKpis();
+  // RI-53 — "Patients Received by HIE" = distinct PROTOCOL-TRACKED patients (ACCEPTED + matched to a
+  // protocol), event_time-scoped and district-filtered like the other cards. /dashboard/overview →
+  // patientsReceivedHIE (backed by the shared matched-cohort query, not a raw source count).
+  const overview = useDashboardOverview();
   // RI-51 — Total Referrals reads the SAME referrals-received-by-HIE KPI (event count from
   // mv_daily_referral_kpis) that the Facility Ranking "Referrals" column and the Facilities
   // "Referral Details" card use, so the three surfaces always agree. (The Compliance page's
@@ -70,7 +77,7 @@ export default function Dashboard() {
   }, [adoption.data]);
 
   const f = facilities.data;
-  const loading = complianceRanking.isLoading || facilities.isLoading || adoption.isLoading || referrals.isLoading;
+  const loading = complianceRanking.isLoading || facilities.isLoading || adoption.isLoading || referrals.isLoading || overview.isLoading;
 
   const indicators: Indicator[] = [
     {
@@ -87,7 +94,15 @@ export default function Dashboard() {
       title: 'Total Facilities',
       value: formatNumber(f?.totalInScope ?? 0),
       tone: 'neutral',
-      context: f ? `${formatNumber(f.activeFacilities)} active · ${formatNumber(f.inactiveFacilities)} inactive` : '',
+      // RI-53 — larger active/inactive breakdown, colour-coded (active = green, inactive = red).
+      context: f ? (
+        <>
+          <span className="font-semibold text-green-600">{formatNumber(f.activeFacilities)} active</span>
+          <span className="text-gray-400"> · </span>
+          <span className="font-semibold text-red-600">{formatNumber(f.inactiveFacilities)} inactive</span>
+        </>
+      ) : '',
+      contextClass: 'text-base',
     },
     {
       icon: ArrowTrendingUpIcon,
@@ -105,6 +120,14 @@ export default function Dashboard() {
       tone: 'neutral',
       context: 'referrals received by HIE',
     },
+    {
+      icon: UserGroupIcon,
+      iconClass: 'bg-sky-50 text-sky-600',
+      title: 'Patients Received by HIE',
+      value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
+      tone: 'neutral',
+      context: 'distinct protocol-tracked patients',
+    },
   ];
 
   return (
@@ -120,17 +143,27 @@ export default function Dashboard() {
         to="/facilities"
         className="group block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        <div className="grid grid-cols-1 divide-y divide-gray-100 sm:grid-cols-2 sm:divide-y-0 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
-          {indicators.map(({ icon: Icon, iconClass, title, value, tone, context }) => (
-            <div key={title} className="flex flex-col py-4 first:pt-0 last:pb-0 sm:px-5 sm:py-0 sm:first:pl-0 sm:last:pr-0">
-              <span className={`flex h-10 w-10 items-center justify-center rounded-xl ${iconClass}`}>
-                <Icon className="h-5 w-5" />
+        {/* RI-53 — 5 indicators on a uniform 3-column grid (equal widths, columns align across
+            both rows): 3 on top, 2 on the second row aligned under the first two columns. Cells are
+            separated by hairline dividers (left border on non-first columns, top border on row 2). */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          {indicators.map(({ icon: Icon, iconClass, title, value, tone, context, contextClass }, i) => (
+            <div
+              key={title}
+              className={[
+                'flex flex-col py-4 lg:py-5',
+                i % 3 !== 0 ? 'lg:border-l lg:border-gray-100 lg:pl-6' : '',
+                i >= 3 ? 'lg:border-t lg:border-gray-100' : '',
+              ].join(' ')}
+            >
+              <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconClass}`}>
+                <Icon className="h-6 w-6" />
               </span>
-              <p className="mt-4 text-sm font-medium text-gray-500">{title}</p>
-              <p className={`mt-1 text-4xl font-bold tabular-nums ${loading ? 'text-gray-300' : TONE_COLOR[tone]}`}>
+              <p className="mt-4 text-base font-semibold text-gray-600">{title}</p>
+              <p className={`mt-1.5 text-5xl font-bold tabular-nums ${loading ? 'text-gray-300' : TONE_COLOR[tone]}`}>
                 {loading ? '—' : value}
               </p>
-              <p className="mt-1 min-h-[16px] text-xs text-gray-500">{loading ? '' : context}</p>
+              <p className={`mt-2 min-h-[18px] ${contextClass ?? 'text-sm text-gray-500'}`}>{loading ? '' : context}</p>
             </div>
           ))}
         </div>

@@ -30,6 +30,14 @@ dropdown, the Events by-facility table) are constrained to the selected district
   `/patients/referrals/received-by-hie`, which disagreed with those event-count surfaces.) The
   Compliance page's Service Workflow **Referral** step is a **separate** metric — patients who
   *completed* the referral step — and is intentionally not reconciled with this received count.
+  **RI-53:** a fifth indicator, **Patients Received by HIE**, was retained on the Dashboard — **distinct
+  protocol-tracked patients** (`uniq(subject)` over ACCEPTED inbound events **matched to a protocol**),
+  **not** a raw source-filtered count. It uses the shared matched-cohort query, scoped by **`event_time`**,
+  facility **and district** (`/dashboard/overview` → `patientsReceivedHIE`; the endpoint now accepts a
+  `district` param) — consistent with the other cards. The indicators sit on a **uniform 3-column grid** (equal widths, columns aligned across
+  both rows) — three on top, two on the second row — separated by hairline dividers. The **Total
+  Facilities** *active · inactive* line was enlarged (`text-sm`) and **colour-coded** — active in
+  **green**, inactive in **red**.
 - **Facilities → Facility Ranking** — enriched with the adoption columns (**Expected Visits (Period)**,
   **Actual Visits (Period)**, Reporting Gap, Adoption Rate) and a **Status** (Active/Inactive) column;
   the Events column was dropped; columns are grouped (Referrals | Compliance | **e-Buzima Adoption
