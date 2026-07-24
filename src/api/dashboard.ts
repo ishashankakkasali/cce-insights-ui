@@ -42,6 +42,7 @@ export interface DashboardComplianceSummary {
 
 export function getDashboardOverview(params?: {
   facilityId?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<DashboardOverview> {
