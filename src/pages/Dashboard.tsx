@@ -84,6 +84,15 @@ export default function Dashboard() {
 
   const indicators: Indicator[] = [
     {
+      icon: UserGroupIcon,
+      iconClass: 'bg-sky-50 text-sky-600',
+      title: 'Patients Received by HIE',
+      value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
+      tone: 'neutral',
+      context: 'distinct protocol-tracked patients',
+      description: 'Distinct patients whose events were received via HIE and matched to a protocol (event_time-scoped, district-filtered).',
+    },
+    {
       icon: ClipboardDocumentCheckIcon,
       iconClass: 'bg-emerald-50 text-emerald-600',
       title: 'Service Compliance Rate',
@@ -126,15 +135,6 @@ export default function Dashboard() {
       tone: 'neutral',
       context: 'referrals received by HIE',
       description: 'Referral events received by HIE in the selected period (by event_time). Same source as the Facility Ranking Referrals column.',
-    },
-    {
-      icon: UserGroupIcon,
-      iconClass: 'bg-sky-50 text-sky-600',
-      title: 'Patients Received by HIE',
-      value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
-      tone: 'neutral',
-      context: 'distinct protocol-tracked patients',
-      description: 'Distinct patients whose events were received via HIE and matched to a protocol (event_time-scoped, district-filtered).',
     },
   ];
 
