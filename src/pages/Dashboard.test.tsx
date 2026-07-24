@@ -57,4 +57,9 @@ describe('Dashboard — RI-53 Patients Received by HIE', () => {
     expect(active).toHaveClass('text-green-600');
     expect(inactive).toHaveClass('text-red-600');
   });
+
+  it('shows an ⓘ info tooltip on every KPI (5 indicators)', () => {
+    renderDashboard();
+    expect(screen.getAllByLabelText('More info')).toHaveLength(5);
+  });
 });
