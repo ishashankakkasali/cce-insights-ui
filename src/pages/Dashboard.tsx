@@ -10,6 +10,7 @@ import {
 import { PageHeader } from '../components/shared/PageHeader';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { rateTone, type Tone } from '../components/shared/KpiCard';
+import { InfoTip } from '../components/shared/InfoTip';
 import { useFacilityActivitySummary, useAdoptionKpis, useFacilityRanking } from '../hooks/useFacilities';
 import { useReferralsKpi, useDashboardOverview } from '../hooks/useDashboard';
 import { formatNumber, formatPercentage } from '../utils/formatters';
@@ -30,6 +31,8 @@ interface Indicator {
   context: ReactNode;
   /** RI-53 — optional override for the context line size (e.g. larger active/inactive text). */
   contextClass?: string;
+  /** ⓘ tooltip explaining how the KPI is derived. */
+  description: string;
 }
 
 // RI-38 — the Dashboard is only high-level NATIONAL indicators. Since every indicator drills into the
@@ -87,6 +90,7 @@ export default function Dashboard() {
       value: formatPercentage(svc.rate),
       tone: rateTone(svc.rate),
       context: `avg across ${formatNumber(svc.facilities)} ${svc.facilities === 1 ? 'facility' : 'facilities'}`,
+      description: "Simple (equal-weight) average of each in-scope facility's own compliance rate — every facility counts once.",
     },
     {
       icon: BuildingOffice2Icon,
@@ -103,6 +107,7 @@ export default function Dashboard() {
         </>
       ) : '',
       contextClass: 'text-base',
+      description: 'Facilities in scope for the selected district. Active = reported activity in the selected period; inactive = none.',
     },
     {
       icon: ArrowTrendingUpIcon,
@@ -111,6 +116,7 @@ export default function Dashboard() {
       value: formatPercentage(adopt.rate),
       tone: rateTone(adopt.rate),
       context: `avg across ${formatNumber(adopt.facilities)} ${adopt.facilities === 1 ? 'facility' : 'facilities'}`,
+      description: "Simple (equal-weight) average of each facility's e-Buzima adoption rate (actual ÷ expected visits) over the selected period.",
     },
     {
       icon: ArrowsRightLeftIcon,
@@ -119,6 +125,7 @@ export default function Dashboard() {
       value: formatNumber(referrals.data?.totalReferralsReceived ?? 0),
       tone: 'neutral',
       context: 'referrals received by HIE',
+      description: 'Referral events received by HIE in the selected period (by event_time). Same source as the Facility Ranking Referrals column.',
     },
     {
       icon: UserGroupIcon,
@@ -127,6 +134,7 @@ export default function Dashboard() {
       value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
       tone: 'neutral',
       context: 'distinct protocol-tracked patients',
+      description: 'Distinct patients whose events were received via HIE and matched to a protocol (event_time-scoped, district-filtered).',
     },
   ];
 
@@ -147,7 +155,7 @@ export default function Dashboard() {
             both rows): 3 on top, 2 on the second row aligned under the first two columns. Cells are
             separated by hairline dividers (left border on non-first columns, top border on row 2). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-          {indicators.map(({ icon: Icon, iconClass, title, value, tone, context, contextClass }, i) => (
+          {indicators.map(({ icon: Icon, iconClass, title, value, tone, context, contextClass, description }, i) => (
             <div
               key={title}
               className={[
@@ -156,9 +164,12 @@ export default function Dashboard() {
                 i >= 3 ? 'lg:border-t lg:border-gray-100' : '',
               ].join(' ')}
             >
-              <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconClass}`}>
-                <Icon className="h-6 w-6" />
-              </span>
+              <div className="flex items-start justify-between pr-1">
+                <span className={`flex h-12 w-12 items-center justify-center rounded-xl ${iconClass}`}>
+                  <Icon className="h-6 w-6" />
+                </span>
+                <InfoTip text={description} />
+              </div>
               <p className="mt-4 text-base font-semibold text-gray-600">{title}</p>
               <p className={`mt-1.5 text-5xl font-bold tabular-nums ${loading ? 'text-gray-300' : TONE_COLOR[tone]}`}>
                 {loading ? '—' : value}
