@@ -8,11 +8,11 @@ import { TableRangePagination } from '../components/shared/TableRangePagination'
 import { EventTrendChart } from '../components/charts/EventTrendChart';
 import { ResourceTypeBarChart } from '../components/charts/ResourceTypeBarChart';
 import {
-  useEventTrends, useEventsByResourceType, useEventsByFacility, useEventSummary,
+  useEventTrends, useEventsByResourceType, useEventsByFacility, useEventSummary, useZeroMatchEvents,
 } from '../hooks/useEventVolume';
 import { useFacilityLookup } from '../hooks/useLookups';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
-import { formatNumber } from '../utils/formatters';
+import { formatNumber, formatPercentage } from '../utils/formatters';
 import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../utils/facilityDisplay';
 import { INTERVAL_OPTIONS } from '../config';
 import type { FacilityEventCount } from '../api/types';
@@ -20,16 +20,19 @@ import type { FacilityEventCount } from '../api/types';
 type Tab = 'resource-type' | 'facility';
 
 const FACILITY_PAGE_SIZE = 10;
+const ZERO_MATCH_PAGE_SIZE = 10;
 
 export default function EventVolume() {
   const [interval, setInterval] = useState('weekly');
   const [activeTab, setActiveTab] = useState<Tab>('resource-type');
   const [facilityPage, setFacilityPage] = useState(1);
+  const [zeroMatchPage, setZeroMatchPage] = useState(1);
 
   const summary = useEventSummary();
   const trends = useEventTrends(interval);
   const byResourceType = useEventsByResourceType();
   const byFacility = useEventsByFacility();
+  const zeroMatchEvents = useZeroMatchEvents();
   const facilities = useFacilityLookup();
   const { district } = useGlobalFilters();
   // Facilities in scope for the global district (the by-facility table merges these so zero-event
@@ -109,6 +112,33 @@ export default function EventVolume() {
   useEffect(() => {
     if (facilityPage > facilityTotalPages) setFacilityPage(facilityTotalPages);
   }, [facilityPage, facilityTotalPages]);
+
+  const zeroMatchRowsWithName = useMemo(
+    () => (zeroMatchEvents.data ?? []).map((r) => ({
+      ...r,
+      facilityName: r.facilityId === '' ? 'Unassigned' : (facilityNameById.get(r.facilityId) ?? r.facilityId),
+    })),
+    [zeroMatchEvents.data, facilityNameById],
+  );
+
+  const duplicateZeroMatchFacilityNames = useMemo(
+    () => findDuplicateFacilityNames(zeroMatchRowsWithName),
+    [zeroMatchRowsWithName],
+  );
+
+  const zeroMatchTotalCount = zeroMatchRowsWithName.length;
+  const zeroMatchTotalPages = Math.max(1, Math.ceil(zeroMatchTotalCount / ZERO_MATCH_PAGE_SIZE));
+  const paginatedZeroMatch = useMemo(
+    () => zeroMatchRowsWithName.slice(
+      (zeroMatchPage - 1) * ZERO_MATCH_PAGE_SIZE,
+      zeroMatchPage * ZERO_MATCH_PAGE_SIZE,
+    ),
+    [zeroMatchRowsWithName, zeroMatchPage],
+  );
+
+  useEffect(() => {
+    if (zeroMatchPage > zeroMatchTotalPages) setZeroMatchPage(zeroMatchTotalPages);
+  }, [zeroMatchPage, zeroMatchTotalPages]);
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'resource-type', label: 'By Resource Type' },
@@ -258,6 +288,57 @@ export default function EventVolume() {
           )}
         </div>
       </div>
+
+      <Card title="Zero-Match Events Info" className="mt-6">
+        {zeroMatchEvents.isLoading || facilities.isLoading ? <LoadingSpinner /> : zeroMatchEvents.error ? <ErrorAlert error={zeroMatchEvents.error} /> : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+                    <th className="pb-2 pr-4">Resource Type</th>
+                    <th className="pb-2 pr-4">Code</th>
+                    <th className="pb-2 pr-4">Category</th>
+                    <th className="pb-2 pr-4">Facility</th>
+                    <th className="pb-2 pr-4">Count</th>
+                    <th className="pb-2">% of Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {paginatedZeroMatch.map((r, i) => (
+                    <tr key={`${r.resourceType}-${r.code}-${r.category}-${r.facilityId}-${i}`} className="hover:bg-gray-50">
+                      <td className="py-2 pr-4 font-medium text-gray-900">{r.resourceType || '—'}</td>
+                      <td className="py-2 pr-4 text-gray-600">{r.code || '—'}</td>
+                      <td className="py-2 pr-4 text-gray-600">{r.category || '—'}</td>
+                      <td className="py-2 pr-4 text-gray-600">
+                        {formatFacilityDisplayName(
+                          { facilityId: r.facilityId, facilityName: r.facilityName },
+                          duplicateZeroMatchFacilityNames,
+                        )}
+                      </td>
+                      <td className="py-2 pr-4">{formatNumber(r.count)}</td>
+                      <td className="py-2">{formatPercentage(r.percentage)}</td>
+                    </tr>
+                  ))}
+                  {paginatedZeroMatch.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-8 text-center text-sm text-gray-500">
+                        No zero-match events in the selected range.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <TableRangePagination
+              page={zeroMatchPage}
+              pageSize={ZERO_MATCH_PAGE_SIZE}
+              totalCount={zeroMatchTotalCount}
+              onPageChange={setZeroMatchPage}
+            />
+          </>
+        )}
+      </Card>
     </>
   );
 }

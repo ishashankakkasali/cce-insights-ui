@@ -1,5 +1,5 @@
 import { apiGet } from './client';
-import type { IngestionFunnel, RejectionAnalytics, SourceDataQuality, PipelineLoss } from './types';
+import type { IngestionFunnel, RejectionAnalytics, SourceDataQuality, PipelineLoss, LastIngestedEvent } from './types';
 
 export function getIngestionFunnel(params?: {
   facilityId?: string;
@@ -34,4 +34,8 @@ export function getPipelineLoss(params?: {
   endDate?: string;
 }): Promise<PipelineLoss> {
   return apiGet('/ingestion/pipeline-loss', params);
+}
+
+export function getLastIngestedEvent(): Promise<LastIngestedEvent> {
+  return apiGet('/ingestion/last-event');
 }

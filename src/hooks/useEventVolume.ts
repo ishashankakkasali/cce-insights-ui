@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { getEventSummary, getEventTrends, getEventsByResourceType, getEventsByFacility, getEventKpis } from '../api/events';
+import { getEventSummary, getEventTrends, getEventsByResourceType, getEventsByFacility, getEventKpis, getZeroMatchEvents } from '../api/events';
 import { useGlobalFilters } from './useGlobalFilters';
 
 const POLLING_INTERVAL = Number(import.meta.env.VITE_POLLING_INTERVAL || 60000);
@@ -42,5 +42,13 @@ export function useEventKpis() {
     queryKey: ['events', 'kpis'],
     queryFn: () => getEventKpis(),
     refetchInterval: POLLING_INTERVAL,
+  });
+}
+
+export function useZeroMatchEvents() {
+  const filters = useGlobalFilters();
+  return useQuery({
+    queryKey: ['events', 'zero-match', filters],
+    queryFn: () => getZeroMatchEvents(filters),
   });
 }

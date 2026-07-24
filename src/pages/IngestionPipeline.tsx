@@ -1,17 +1,23 @@
+import { useState } from 'react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { MetricCard } from '../components/shared/MetricCard';
 import { Card } from '../components/shared/Card';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { IngestionFunnelChart } from '../components/charts/IngestionFunnelChart';
-import { useIngestionFunnel, useIngestionRejections, useSourceQuality, usePipelineLoss } from '../hooks/useIngestion';
+import { IngestionTrendChart } from '../components/charts/IngestionTrendChart';
+import { useIngestionFunnel, useIngestionRejections, useSourceQuality, usePipelineLoss, useLastIngestedEvent } from '../hooks/useIngestion';
 import { formatNumber, formatPercentage } from '../utils/formatters';
+import { formatDateTime, formatRelative } from '../utils/dates';
+import { INTERVAL_OPTIONS } from '../config';
 
 export default function IngestionPipeline() {
-  const funnel = useIngestionFunnel();
+  const [interval, setInterval] = useState('weekly');
+  const funnel = useIngestionFunnel({ interval });
   const rejections = useIngestionRejections();
   const quality = useSourceQuality();
   const loss = usePipelineLoss();
+  const lastEvent = useLastIngestedEvent();
 
   return (
     <>
@@ -19,7 +25,7 @@ export default function IngestionPipeline() {
 
       {funnel.isLoading ? <LoadingSpinner /> : funnel.error ? <ErrorAlert error={funnel.error} /> : funnel.data ? (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             <MetricCard title="Received" value={formatNumber(funnel.data.totalReceived)} description="Total number of clinical events received by the ingestion pipeline from all sources." />
             <MetricCard title="Accepted" value={formatPercentage(funnel.data.acceptanceRate)} subtitle={formatNumber(funnel.data.accepted)} description="Percentage of received events that passed validation and were accepted for processing." bgColor="bg-green-50" />
             <MetricCard title="Rejected" value={formatPercentage(funnel.data.rejectionRate)} subtitle={formatNumber(funnel.data.rejected)} description="Percentage of received events that failed validation and were rejected (malformed, missing fields, etc.)." bgColor={funnel.data.rejected > 0 ? 'bg-red-50' : undefined} />
@@ -31,10 +37,36 @@ export default function IngestionPipeline() {
               description="Events accepted by the Collector but not found in the Compliance engine — indicates data loss between pipeline stages."
               bgColor={loss.data && loss.data.lostEvents > 0 ? 'bg-red-50' : undefined}
             />
+            <MetricCard
+              title="Last Ingested Event"
+              value={lastEvent.data?.lastEventTime ? formatRelative(lastEvent.data.lastEventTime) : '—'}
+              subtitle={lastEvent.data?.lastEventTime ? formatDateTime(lastEvent.data.lastEventTime) : undefined}
+              description="Timestamp the collector last received an inbound event, across all sources — independent of the selected date range. Indicates whether the pipeline is actively receiving data."
+            />
           </div>
 
           <Card title="Ingestion Funnel" className="mt-6">
             <IngestionFunnelChart data={funnel.data.breakdown} />
+          </Card>
+
+          <Card title="Ingestion Volume Trends" className="mt-6"
+            action={
+              <div className="flex gap-1">
+                {INTERVAL_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setInterval(opt.value)}
+                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                      interval === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            {funnel.data.trends ? <IngestionTrendChart data={funnel.data.trends} /> : null}
           </Card>
         </>
       ) : null}

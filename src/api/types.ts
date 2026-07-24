@@ -351,6 +351,15 @@ export interface FacilityEventCount {
   byResourceType: { resourceType: string; count: number }[];
 }
 
+export interface ZeroMatchEvent {
+  resourceType: string;
+  code: string;
+  category: string;
+  facilityId: string;
+  count: number;
+  percentage: number;
+}
+
 // ─── Protocol Analytics ──────────────────────────────────────
 
 export interface StepAnalytics {
@@ -631,4 +640,8 @@ export interface PipelineLoss {
   lostEvents: number;
   lossRate: number;
   bySource: { source: string; lostEvents: number }[];
+}
+
+export interface LastIngestedEvent {
+  lastEventTime: string | null;
 }

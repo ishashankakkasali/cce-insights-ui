@@ -1,7 +1,7 @@
 import { apiGet, apiGetPaginated } from './client';
 import type {
   EventVolumeSummary, EventVolumeTrend, ResourceTypeCount,
-  FacilityEventCount, EventKpis,
+  FacilityEventCount, EventKpis, ZeroMatchEvent,
 } from './types';
 
 export function getEventSummary(params?: {
@@ -56,4 +56,13 @@ export function getEventsByFacility(params?: {
 
 export function getEventKpis(): Promise<EventKpis> {
   return apiGet('/events/kpis');
+}
+
+export function getZeroMatchEvents(params?: {
+  facilityId?: string;
+  district?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<ZeroMatchEvent[]> {
+  return apiGet('/events/zero-match', params);
 }
