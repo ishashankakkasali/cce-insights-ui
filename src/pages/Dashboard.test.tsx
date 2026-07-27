@@ -23,6 +23,11 @@ vi.mock('../hooks/useDashboard', () => ({
   useDashboardOverview: () => ({ data: { patientsReceivedHIE: 2639 }, isLoading: false }),
 }));
 
+// RI-54 — the "Total Deviations" indicator reads the same KPI as the Deviations page's card.
+vi.mock('../hooks/useDeviations', () => ({
+  useDeviationKpis: () => ({ data: { totalDeviations: 7 }, isLoading: false }),
+}));
+
 function renderDashboard() {
   render(
     <MemoryRouter>
@@ -58,8 +63,8 @@ describe('Dashboard — RI-53 Patients Received by HIE', () => {
     expect(inactive).toHaveClass('text-red-600');
   });
 
-  it('shows an ⓘ info tooltip on every KPI (5 indicators)', () => {
+  it('shows an ⓘ info tooltip on every KPI (6 indicators, incl. RI-54 Total Deviations)', () => {
     renderDashboard();
-    expect(screen.getAllByLabelText('More info')).toHaveLength(5);
+    expect(screen.getAllByLabelText('More info')).toHaveLength(6);
   });
 });
