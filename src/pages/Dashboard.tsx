@@ -6,6 +6,7 @@ import {
   ArrowTrendingUpIcon,
   ArrowsRightLeftIcon,
   UserGroupIcon,
+  ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
 import { PageHeader } from '../components/shared/PageHeader';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
@@ -13,6 +14,7 @@ import { rateTone, type Tone } from '../components/shared/KpiCard';
 import { InfoTip } from '../components/shared/InfoTip';
 import { useFacilityActivitySummary, useAdoptionKpis, useFacilityRanking } from '../hooks/useFacilities';
 import { useReferralsKpi, useDashboardOverview } from '../hooks/useDashboard';
+import { useDeviationKpis } from '../hooks/useDeviations';
 import { formatNumber, formatPercentage } from '../utils/formatters';
 
 const TONE_COLOR: Record<Tone, string> = {
@@ -53,6 +55,9 @@ export default function Dashboard() {
   // "Referral" workflow step is a different, step-based metric — patients who *completed* the
   // referral step — and is intentionally not reconciled with this received count.)
   const referrals = useReferralsKpi();
+  // RI-54 — Total Deviations reads the SAME totalDeviations KPI (from /deviations/kpis) that the
+  // Deviations page's "Total Deviations" card uses, so the two surfaces always agree.
+  const deviations = useDeviationKpis();
 
   // National Service Compliance Rate = simple (equal-weight) average of each facility's own
   // compliance rate across ALL in-scope facilities (facility-level aggregation, not the pooled
@@ -80,17 +85,19 @@ export default function Dashboard() {
   }, [adoption.data]);
 
   const f = facilities.data;
-  const loading = complianceRanking.isLoading || facilities.isLoading || adoption.isLoading || referrals.isLoading || overview.isLoading;
+  const loading = complianceRanking.isLoading || facilities.isLoading || adoption.isLoading || referrals.isLoading || overview.isLoading || deviations.isLoading;
 
+  // RI-54 — order: Patients Received by HIE, Total Facilities, eBuzima Adoption Rate,
+  // Service Compliance Rate, Total Referrals, Total Deviations.
   const indicators: Indicator[] = [
     {
-      icon: ClipboardDocumentCheckIcon,
-      iconClass: 'bg-emerald-50 text-emerald-600',
-      title: 'Service Compliance Rate',
-      value: formatPercentage(svc.rate),
-      tone: rateTone(svc.rate),
-      context: `avg across ${formatNumber(svc.facilities)} ${svc.facilities === 1 ? 'facility' : 'facilities'}`,
-      description: "Simple (equal-weight) average of each in-scope facility's own compliance rate — every facility counts once.",
+      icon: UserGroupIcon,
+      iconClass: 'bg-sky-50 text-sky-600',
+      title: 'Patients Received by HIE',
+      value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
+      tone: 'neutral',
+      context: 'distinct protocol-tracked patients',
+      description: 'Distinct patients whose events were received via HIE and matched to a protocol (event_time-scoped, district-filtered).',
     },
     {
       icon: BuildingOffice2Icon,
@@ -119,6 +126,15 @@ export default function Dashboard() {
       description: "Simple (equal-weight) average of each facility's e-Buzima adoption rate (actual ÷ expected visits) over the selected period.",
     },
     {
+      icon: ClipboardDocumentCheckIcon,
+      iconClass: 'bg-emerald-50 text-emerald-600',
+      title: 'Service Compliance Rate',
+      value: formatPercentage(svc.rate),
+      tone: rateTone(svc.rate),
+      context: `avg across ${formatNumber(svc.facilities)} ${svc.facilities === 1 ? 'facility' : 'facilities'}`,
+      description: "Simple (equal-weight) average of each in-scope facility's own compliance rate — every facility counts once.",
+    },
+    {
       icon: ArrowsRightLeftIcon,
       iconClass: 'bg-amber-50 text-amber-600',
       title: 'Total Referrals',
@@ -128,13 +144,13 @@ export default function Dashboard() {
       description: 'Referral events received by HIE in the selected period (by event_time). Same source as the Facility Ranking Referrals column.',
     },
     {
-      icon: UserGroupIcon,
-      iconClass: 'bg-sky-50 text-sky-600',
-      title: 'Patients Received by HIE',
-      value: formatNumber(overview.data?.patientsReceivedHIE ?? 0),
+      icon: ExclamationTriangleIcon,
+      iconClass: 'bg-red-50 text-red-600',
+      title: 'Total Deviations',
+      value: formatNumber(deviations.data?.totalDeviations ?? 0),
       tone: 'neutral',
-      context: 'distinct protocol-tracked patients',
-      description: 'Distinct patients whose events were received via HIE and matched to a protocol (event_time-scoped, district-filtered).',
+      context: 'protocol deviations detected',
+      description: 'Distinct deviations detected during the selected period (counted from the deviation table, no double-counting across snapshot days). Same source as the Deviations page.',
     },
   ];
 
@@ -151,9 +167,9 @@ export default function Dashboard() {
         to="/facilities"
         className="group block rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
       >
-        {/* RI-53 — 5 indicators on a uniform 3-column grid (equal widths, columns align across
-            both rows): 3 on top, 2 on the second row aligned under the first two columns. Cells are
-            separated by hairline dividers (left border on non-first columns, top border on row 2). */}
+        {/* RI-54 — 6 indicators on a uniform 3-column grid (equal widths, columns align across
+            both rows): 3 on top, 3 on the second row. Cells are separated by hairline dividers
+            (left border on non-first columns, top border on row 2). */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {indicators.map(({ icon: Icon, iconClass, title, value, tone, context, contextClass, description }, i) => (
             <div
