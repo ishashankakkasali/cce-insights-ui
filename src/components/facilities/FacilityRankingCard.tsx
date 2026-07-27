@@ -143,7 +143,7 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
         </div>
       </div>
 
-      <Card title="Facility Ranking" description="Tracked patients — those with a protocol-matched clinical event in the selected period (by clinical event date, not enrollment) — counted once at their assigned facility. Compliance % reflects deviations that occurred in the period. Adoption columns mirror the e-Buzima Adoption view. Click a facility to open it on the Compliance page.">
+      <Card title="Facility Ranking" description="Tracked patients — those with a protocol-matched clinical event in the selected period (by clinical event date, not enrollment) — counted once at their assigned facility. Compliance % reflects deviations that occurred in the period. Adoption columns show expected vs. actual visit volume for the period. Click a facility to open it on the Compliance page.">
         {statusLabel && (
           <p className="mb-3 text-xs text-gray-500">
             Filtered to <span className="font-semibold text-gray-700">{statusLabel}</span> facilities
@@ -165,6 +165,7 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
                     <th className="border-b border-l border-gray-200 pt-3 pb-2 pl-4 pr-4 align-bottom text-xs font-medium text-gray-500" rowSpan={2}>Referrals</th>
                     <th className="border-b border-l border-gray-200 pt-3 pb-1.5 pl-4 pr-4 text-center" colSpan={3}>Compliance</th>
                     <th className="border-b border-l border-gray-200 pt-3 pb-1.5 pl-4 pr-4 text-center" colSpan={4}>e-Buzima Adoption (Selected Period)</th>
+                    <th className="border-b border-l border-gray-200 pt-3 pb-2 pl-4 pr-4 align-bottom text-xs font-medium text-gray-500" rowSpan={2}>Events</th>
                     <th className="border-b border-l border-gray-200 pt-3 pb-2 pl-4 align-bottom text-xs font-medium text-gray-500" rowSpan={2}>Status</th>
                   </tr>
                   <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
@@ -215,6 +216,7 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
                           {gap > 0 ? `−${formatNumber(gap)}` : `+${formatNumber(Math.abs(gap))}`}
                         </td>
                         <td className={`py-2 pr-4 text-center font-semibold ${rateColor}`}>{formatPercentage(adoptionRate, 2)}</td>
+                        <td className="border-l border-gray-200 py-2 pl-4 pr-4 tabular-nums">{formatNumber(f.totalEvents)}</td>
                         <td className="border-l border-gray-200 py-2 pl-4">
                           <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${
                             active ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'

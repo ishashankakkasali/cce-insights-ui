@@ -57,3 +57,11 @@ describe('FacilityRankingCard — RI-33 adoption columns', () => {
     expect(screen.getByText('0.45%')).toBeInTheDocument();          // adoptionRate
   });
 });
+
+describe('FacilityRankingCard — RI-62 Events column', () => {
+  it('renders the Events column header and the row\'s totalEvents value', () => {
+    renderCard();
+    expect(screen.getByText('Events')).toBeInTheDocument();
+    expect(screen.getByText('146')).toBeInTheDocument();   // totalEvents from the ranking row
+  });
+});

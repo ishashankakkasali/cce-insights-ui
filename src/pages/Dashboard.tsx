@@ -141,7 +141,7 @@ export default function Dashboard() {
       value: formatNumber(referrals.data?.totalReferralsReceived ?? 0),
       tone: 'neutral',
       context: 'referrals received by HIE',
-      description: 'Referral events received by HIE in the selected period (by event_time). Same source as the Facility Ranking Referrals column.',
+      description: 'Referral events received by HIE in the selected period, by clinical event time.',
     },
     {
       icon: ExclamationTriangleIcon,
@@ -150,7 +150,7 @@ export default function Dashboard() {
       value: formatNumber(deviations.data?.totalDeviations ?? 0),
       tone: 'neutral',
       context: 'protocol deviations detected',
-      description: 'Distinct deviations detected during the selected period (counted from the deviation table, no double-counting across snapshot days). Same source as the Deviations page.',
+      description: 'Distinct protocol deviations detected during the selected period (overdue, missed, or out-of-order steps), counted once regardless of how many days they appear in the underlying snapshot.',
     },
   ];
 
