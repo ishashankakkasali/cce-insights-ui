@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { MetricCard } from '../components/shared/MetricCard';
 import { Card } from '../components/shared/Card';
@@ -27,6 +27,17 @@ export default function EventVolume() {
   const [activeTab, setActiveTab] = useState<Tab>('resource-type');
   const [facilityPage, setFacilityPage] = useState(1);
   const [zeroMatchPage, setZeroMatchPage] = useState(1);
+  const [zeroMatchFacility, setZeroMatchFacility] = useState('');
+  const [highlightedMetric, setHighlightedMetric] = useState<'total' | 'zero-match' | null>(null);
+  const resourceTypeSectionRef = useRef<HTMLDivElement>(null);
+  const zeroMatchSectionRef = useRef<HTMLDivElement>(null);
+
+  function jumpToMetric(metric: 'total' | 'zero-match') {
+    if (metric === 'total') setActiveTab('resource-type');
+    setHighlightedMetric(metric);
+    (metric === 'total' ? resourceTypeSectionRef : zeroMatchSectionRef).current
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 
   const summary = useEventSummary();
   const trends = useEventTrends(interval);
@@ -126,14 +137,19 @@ export default function EventVolume() {
     [zeroMatchRowsWithName],
   );
 
-  const zeroMatchTotalCount = zeroMatchRowsWithName.length;
+  const zeroMatchRowsFiltered = useMemo(
+    () => zeroMatchFacility ? zeroMatchRowsWithName.filter((r) => r.facilityId === zeroMatchFacility) : zeroMatchRowsWithName,
+    [zeroMatchRowsWithName, zeroMatchFacility],
+  );
+
+  const zeroMatchTotalCount = zeroMatchRowsFiltered.length;
   const zeroMatchTotalPages = Math.max(1, Math.ceil(zeroMatchTotalCount / ZERO_MATCH_PAGE_SIZE));
   const paginatedZeroMatch = useMemo(
-    () => zeroMatchRowsWithName.slice(
+    () => zeroMatchRowsFiltered.slice(
       (zeroMatchPage - 1) * ZERO_MATCH_PAGE_SIZE,
       zeroMatchPage * ZERO_MATCH_PAGE_SIZE,
     ),
-    [zeroMatchRowsWithName, zeroMatchPage],
+    [zeroMatchRowsFiltered, zeroMatchPage],
   );
 
   useEffect(() => {
@@ -159,6 +175,8 @@ export default function EventVolume() {
               title="Total Events"
               value={formatNumber(periodTotalEvents)}
               description="Inbound clinical events (FHIR resources) accepted by the HIE pipeline during the selected date range."
+              onClick={() => jumpToMetric('total')}
+              selected={highlightedMetric === 'total'}
             />
             <MetricCard
               title="Matched Rate"
@@ -171,6 +189,8 @@ export default function EventVolume() {
               value={`${Number(zeroMatchRatePct).toFixed(2)}%`}
               description={`Percentage of events that could not be matched to any protocol step in the selected period (${formatNumber(zeroMatchCount)} of ${formatNumber(periodTotalEvents)}).`}
               bgColor="bg-amber-50"
+              onClick={() => jumpToMetric('zero-match')}
+              selected={highlightedMetric === 'zero-match'}
             />
             <MetricCard
               title="Duplicates"
@@ -210,7 +230,10 @@ export default function EventVolume() {
         ) : null}
       </Card>
 
-      <div className="mt-6">
+      <div
+        ref={resourceTypeSectionRef}
+        className={`mt-6 ${highlightedMetric === 'total' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}`}
+      >
         <div className="flex border-b border-gray-200">
           {tabs.map((tab) => (
             <button
@@ -289,56 +312,78 @@ export default function EventVolume() {
         </div>
       </div>
 
-      <Card title="Zero-Match Events Info" className="mt-6">
-        {zeroMatchEvents.isLoading || facilities.isLoading ? <LoadingSpinner /> : zeroMatchEvents.error ? <ErrorAlert error={zeroMatchEvents.error} /> : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                    <th className="pb-2 pr-4">Resource Type</th>
-                    <th className="pb-2 pr-4">Code</th>
-                    <th className="pb-2 pr-4">Category</th>
-                    <th className="pb-2 pr-4">Facility</th>
-                    <th className="pb-2 pr-4">Count</th>
-                    <th className="pb-2">% of Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {paginatedZeroMatch.map((r, i) => (
-                    <tr key={`${r.resourceType}-${r.code}-${r.category}-${r.facilityId}-${i}`} className="hover:bg-gray-50">
-                      <td className="py-2 pr-4 font-medium text-gray-900">{r.resourceType || '—'}</td>
-                      <td className="py-2 pr-4 text-gray-600">{r.code || '—'}</td>
-                      <td className="py-2 pr-4 text-gray-600">{r.category || '—'}</td>
-                      <td className="py-2 pr-4 text-gray-600">
-                        {formatFacilityDisplayName(
-                          { facilityId: r.facilityId, facilityName: r.facilityName },
-                          duplicateZeroMatchFacilityNames,
-                        )}
-                      </td>
-                      <td className="py-2 pr-4">{formatNumber(r.count)}</td>
-                      <td className="py-2">{formatPercentage(r.percentage)}</td>
+      <div
+        ref={zeroMatchSectionRef}
+        className={highlightedMetric === 'zero-match' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}
+      >
+        <Card
+          title="Zero-Match Events Info"
+          className="mt-6"
+          action={
+            <select
+              value={zeroMatchFacility}
+              onChange={(e) => { setZeroMatchFacility(e.target.value); setZeroMatchPage(1); }}
+              className="w-56 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="">All Facilities</option>
+              {scopedFacilities.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {formatFacilityDisplayName({ facilityId: f.id, facilityName: f.name }, duplicateFacilityNames)}
+                </option>
+              ))}
+            </select>
+          }
+        >
+          {zeroMatchEvents.isLoading || facilities.isLoading ? <LoadingSpinner /> : zeroMatchEvents.error ? <ErrorAlert error={zeroMatchEvents.error} /> : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+                      <th className="pb-2 pr-4">Resource Type</th>
+                      <th className="pb-2 pr-4">Code</th>
+                      <th className="pb-2 pr-4">Category</th>
+                      <th className="pb-2 pr-4">Facility</th>
+                      <th className="pb-2 pr-4">Count</th>
+                      <th className="pb-2">% of Total</th>
                     </tr>
-                  ))}
-                  {paginatedZeroMatch.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-8 text-center text-sm text-gray-500">
-                        No zero-match events in the selected range.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <TableRangePagination
-              page={zeroMatchPage}
-              pageSize={ZERO_MATCH_PAGE_SIZE}
-              totalCount={zeroMatchTotalCount}
-              onPageChange={setZeroMatchPage}
-            />
-          </>
-        )}
-      </Card>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {paginatedZeroMatch.map((r, i) => (
+                      <tr key={`${r.resourceType}-${r.code}-${r.category}-${r.facilityId}-${i}`} className="hover:bg-gray-50">
+                        <td className="py-2 pr-4 font-medium text-gray-900">{r.resourceType || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-600">{r.code || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-600">{r.category || '—'}</td>
+                        <td className="py-2 pr-4 text-gray-600">
+                          {formatFacilityDisplayName(
+                            { facilityId: r.facilityId, facilityName: r.facilityName },
+                            duplicateZeroMatchFacilityNames,
+                          )}
+                        </td>
+                        <td className="py-2 pr-4">{formatNumber(r.count)}</td>
+                        <td className="py-2">{formatPercentage(r.percentage)}</td>
+                      </tr>
+                    ))}
+                    {paginatedZeroMatch.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="py-8 text-center text-sm text-gray-500">
+                          No zero-match events in the selected range.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <TableRangePagination
+                page={zeroMatchPage}
+                pageSize={ZERO_MATCH_PAGE_SIZE}
+                totalCount={zeroMatchTotalCount}
+                onPageChange={setZeroMatchPage}
+              />
+            </>
+          )}
+        </Card>
+      </div>
     </>
   );
 }
