@@ -132,11 +132,6 @@ export default function EventVolume() {
     [zeroMatchEvents.data, facilityNameById],
   );
 
-  const duplicateZeroMatchFacilityNames = useMemo(
-    () => findDuplicateFacilityNames(zeroMatchRowsWithName),
-    [zeroMatchRowsWithName],
-  );
-
   const zeroMatchRowsFiltered = useMemo(
     () => zeroMatchFacility ? zeroMatchRowsWithName.filter((r) => r.facilityId === zeroMatchFacility) : zeroMatchRowsWithName,
     [zeroMatchRowsWithName, zeroMatchFacility],
@@ -357,7 +352,7 @@ export default function EventVolume() {
                         <td className="py-2 pr-4 text-gray-600">
                           {formatFacilityDisplayName(
                             { facilityId: r.facilityId, facilityName: r.facilityName },
-                            duplicateZeroMatchFacilityNames,
+                            duplicateFacilityNames,
                           )}
                         </td>
                         <td className="py-2 pr-4">{formatNumber(r.count)}</td>
