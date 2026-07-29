@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/shared/PageHeader';
 import { MetricCard } from '../components/shared/MetricCard';
@@ -7,10 +7,8 @@ import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { useProtocolComplianceSummary } from '../hooks/useComplianceSummary';
 import { useStepAnalytics, useActionOrder } from '../hooks/useProtocols';
-import { useProtocols, useFacilityLookup } from '../hooks/useLookups';
-import { useGlobalFilters } from '../hooks/useGlobalFilters';
+import { useProtocols } from '../hooks/useLookups';
 import { formatNumber, formatPercentage } from '../utils/formatters';
-import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../utils/facilityDisplay';
 import { buildWorkflowTree } from '../utils/serviceWorkflow';
 
 /* Collapsible sub-actions panel for the Service Workflow Compliance timeline */
@@ -93,23 +91,8 @@ export default function ComplianceOverview() {
   };
   const protocolId = searchParams.get('protocol') ?? '';
   const setProtocolId = (v: string) => setParam('protocol', v);
-  const facilityId = searchParams.get('facility') ?? '';
-  const setFacilityId = (v: string) => setParam('facility', v);
 
-  const { district } = useGlobalFilters();
   const protocols = useProtocols();
-  const facilities = useFacilityLookup();
-  // Constrain the Facility picker to the globally-selected district (RI global filter).
-  const facilityOptions = useMemo(
-    () => (facilities.data ?? []).filter((fac) => !district || fac.district === district),
-    [facilities.data, district],
-  );
-  // RI-48: when facilities share a display name, disambiguate the dropdown options with the
-  // facility id (same logic as the Facility Ranking table).
-  const duplicateFacilityNames = useMemo(
-    () => findDuplicateFacilityNames(facilityOptions.map((f) => ({ facilityId: f.id, facilityName: f.name }))),
-    [facilityOptions],
-  );
 
   // Default to the first protocol on initial load ONLY. Runs once — otherwise selecting
   // "All Protocols" (protocolId = '') would be immediately overwritten back to the first
@@ -125,8 +108,8 @@ export default function ComplianceOverview() {
   // Compliance Overview is ALWAYS Clinical Event Date based (patients with a protocol-matched event by
   // clinical event_time in range), so it reconciles with the Dashboard "Service Compliance" card. No
   // toggle — the Clinical Event Date / Enrollment radio lives only on the Patients page.
-  const summary = useProtocolComplianceSummary(protocolId, facilityId || undefined, 'eventTime');
-  const stepAnalytics = useStepAnalytics(protocolId, facilityId || undefined);
+  const summary = useProtocolComplianceSummary(protocolId, 'eventTime');
+  const stepAnalytics = useStepAnalytics(protocolId);
   const actionOrder = useActionOrder(protocolId);
 
   const data = summary.data;
@@ -148,21 +131,6 @@ export default function ComplianceOverview() {
               {protocols.data?.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.title || p.url.split('/').pop()} (v{p.version})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-gray-500">Facility</label>
-            <select
-              value={facilityId}
-              onChange={(e) => setFacilityId(e.target.value)}
-              className="w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">All Facilities</option>
-              {facilityOptions.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {formatFacilityDisplayName({ facilityId: f.id, facilityName: f.name }, duplicateFacilityNames)}
                 </option>
               ))}
             </select>
@@ -196,10 +164,10 @@ export default function ComplianceOverview() {
                   const missed = data.stepMetrics.missed ?? 0;
                   const pending = data.stepMetrics.pending ?? 0;
                   const totalSteps = data.stepMetrics.totalSteps ?? 0;
-                  // Carry the current protocol + facility selection forward to the Deviations page.
+                  // Carry the current protocol selection forward to the Deviations page. (Facility
+                  // no longer needs carrying — it's the same global filter on both pages now.)
                   const carry = new URLSearchParams();
                   if (protocolId) carry.set('protocol', protocolId);
-                  if (facilityId) carry.set('facility', facilityId);
                   const protoQ = carry.toString();
 
                   const tiles = [

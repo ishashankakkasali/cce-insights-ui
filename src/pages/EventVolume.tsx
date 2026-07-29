@@ -27,7 +27,6 @@ export default function EventVolume() {
   const [activeTab, setActiveTab] = useState<Tab>('resource-type');
   const [facilityPage, setFacilityPage] = useState(1);
   const [zeroMatchPage, setZeroMatchPage] = useState(1);
-  const [zeroMatchFacility, setZeroMatchFacility] = useState('');
   const [highlightedMetric, setHighlightedMetric] = useState<'total' | 'zero-match' | null>(null);
   const resourceTypeSectionRef = useRef<HTMLDivElement>(null);
   const zeroMatchSectionRef = useRef<HTMLDivElement>(null);
@@ -45,12 +44,12 @@ export default function EventVolume() {
   const byFacility = useEventsByFacility();
   const zeroMatchEvents = useZeroMatchEvents();
   const facilities = useFacilityLookup();
-  const { district } = useGlobalFilters();
-  // Facilities in scope for the global district (the by-facility table merges these so zero-event
-  // facilities still appear — without this it would re-introduce out-of-district facilities).
+  const { district, facilityId } = useGlobalFilters();
+  // Facilities in scope for the global district/facility (the by-facility table merges these so
+  // zero-event facilities still appear — without this it would re-introduce out-of-scope facilities).
   const scopedFacilities = useMemo(
-    () => (facilities.data ?? []).filter((f) => !district || f.district === district),
-    [facilities.data, district],
+    () => (facilities.data ?? []).filter((f) => (!district || f.district === district) && (!facilityId || f.id === facilityId)),
+    [facilities.data, district, facilityId],
   );
 
   // All header tiles (incl. Pipeline Loss) come from /events/summary — every metric is
@@ -79,15 +78,15 @@ export default function EventVolume() {
       seen.add(fac.id);
     }
     // Defensive: include any API row whose facility id isn't in the (scoped) reference — but when a
-    // district is selected, don't re-introduce out-of-district facilities, so only add unseen rows
-    // when no district is active.
-    if (!district) {
+    // district or facility is selected, don't re-introduce out-of-scope facilities, so only add
+    // unseen rows when no district/facility filter is active.
+    if (!district && !facilityId) {
       for (const row of byFacility.data?.data ?? []) {
         if (!seen.has(row.facilityId)) merged.push(row);
       }
     }
     return merged.sort((a, b) => b.totalEvents - a.totalEvents);
-  }, [byFacility.data, scopedFacilities, district]);
+  }, [byFacility.data, scopedFacilities, district, facilityId]);
 
   const facilityNameById = useMemo(() => {
     const map = new Map<string, string>();
@@ -132,19 +131,14 @@ export default function EventVolume() {
     [zeroMatchEvents.data, facilityNameById],
   );
 
-  const zeroMatchRowsFiltered = useMemo(
-    () => zeroMatchFacility ? zeroMatchRowsWithName.filter((r) => r.facilityId === zeroMatchFacility) : zeroMatchRowsWithName,
-    [zeroMatchRowsWithName, zeroMatchFacility],
-  );
-
-  const zeroMatchTotalCount = zeroMatchRowsFiltered.length;
+  const zeroMatchTotalCount = zeroMatchRowsWithName.length;
   const zeroMatchTotalPages = Math.max(1, Math.ceil(zeroMatchTotalCount / ZERO_MATCH_PAGE_SIZE));
   const paginatedZeroMatch = useMemo(
-    () => zeroMatchRowsFiltered.slice(
+    () => zeroMatchRowsWithName.slice(
       (zeroMatchPage - 1) * ZERO_MATCH_PAGE_SIZE,
       zeroMatchPage * ZERO_MATCH_PAGE_SIZE,
     ),
-    [zeroMatchRowsFiltered, zeroMatchPage],
+    [zeroMatchRowsWithName, zeroMatchPage],
   );
 
   useEffect(() => {
@@ -227,7 +221,7 @@ export default function EventVolume() {
 
       <div
         ref={resourceTypeSectionRef}
-        className={`mt-6 ${highlightedMetric === 'total' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}`}
+        className={`mt-6 scroll-mt-24 ${highlightedMetric === 'total' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}`}
       >
         <div className="flex border-b border-gray-200">
           {tabs.map((tab) => (
@@ -309,26 +303,9 @@ export default function EventVolume() {
 
       <div
         ref={zeroMatchSectionRef}
-        className={highlightedMetric === 'zero-match' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}
+        className={`scroll-mt-24 ${highlightedMetric === 'zero-match' ? 'ring-2 ring-blue-400 ring-offset-2 rounded-xl' : ''}`}
       >
-        <Card
-          title="Zero-Match Events Info"
-          className="mt-6"
-          action={
-            <select
-              value={zeroMatchFacility}
-              onChange={(e) => { setZeroMatchFacility(e.target.value); setZeroMatchPage(1); }}
-              className="w-56 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">All Facilities</option>
-              {scopedFacilities.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {formatFacilityDisplayName({ facilityId: f.id, facilityName: f.name }, duplicateFacilityNames)}
-                </option>
-              ))}
-            </select>
-          }
-        >
+        <Card title="Zero-Match Events Info" className="mt-6">
           {zeroMatchEvents.isLoading || facilities.isLoading ? <LoadingSpinner /> : zeroMatchEvents.error ? <ErrorAlert error={zeroMatchEvents.error} /> : (
             <>
               <div className="overflow-x-auto">

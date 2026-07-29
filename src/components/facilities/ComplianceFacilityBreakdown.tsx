@@ -4,6 +4,7 @@ import { ErrorAlert } from '../shared/ErrorAlert';
 import { TableRangePagination } from '../shared/TableRangePagination';
 import { DistrictFacilityFilter, filterByDistrictFacility, LabeledSelect, ALL_DISTRICTS, ALL_FACILITIES } from '../shared/DistrictSelect';
 import { useFacilityRanking } from '../../hooks/useFacilities';
+import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../../utils/facilityDisplay';
 
@@ -16,8 +17,9 @@ const PAGE_SIZE = 10;
  */
 export function ComplianceFacilityBreakdown() {
   const ranking = useFacilityRanking({ rankBy: 'complianceRate', order: 'asc', limit: 1000 });
+  const { facilityId: globalFacilityId } = useGlobalFilters();
+  const facility = globalFacilityId ?? ALL_FACILITIES;
   const [district, setDistrict] = useState<string>(ALL_DISTRICTS);
-  const [facility, setFacility] = useState<string>(ALL_FACILITIES);
   const [status, setStatus] = useState<'all' | 'compliant' | 'noncompliant'>('all');
   const [page, setPage] = useState(1);
 
@@ -70,9 +72,8 @@ export function ComplianceFacilityBreakdown() {
             idPrefix="compliance"
             options={ranking.data?.data ?? []}
             district={district}
-            facility={facility}
             onDistrictChange={setDistrict}
-            onFacilityChange={setFacility}
+            showFacility={false}
           />
         </div>
       </div>

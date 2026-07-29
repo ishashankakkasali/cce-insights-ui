@@ -5,16 +5,14 @@ import {
 } from '../api/deviations';
 import { useGlobalFilters } from './useGlobalFilters';
 
-// RI-49: an explicit facilityId (from the Deviations page's per-page Facility picker) overrides
-// the global filter's facilityId; falls back to the global value when not provided.
-export function useDeviationKpis(protocolDefinitionId?: string, facilityId?: string) {
+// RI-56: facilityId now comes exclusively from the global header filter (useGlobalFilters).
+export function useDeviationKpis(protocolDefinitionId?: string) {
   const filters = useGlobalFilters();
-  const facility = facilityId ?? filters.facilityId;
   return useQuery({
-    queryKey: ['deviations', 'kpis', { protocolDefinitionId, facility, ...filters }],
+    queryKey: ['deviations', 'kpis', { protocolDefinitionId, ...filters }],
     queryFn: () => getDeviationKpis({
       protocolDefinitionId,
-      facilityId: facility,
+      facilityId: filters.facilityId,
       district: filters.district,
       startDate: filters.startDate,
       endDate: filters.endDate,
@@ -23,21 +21,19 @@ export function useDeviationKpis(protocolDefinitionId?: string, facilityId?: str
   });
 }
 
-export function useDeviationTrends(interval = 'weekly', protocolDefinitionId?: string, facilityId?: string) {
+export function useDeviationTrends(interval = 'weekly', protocolDefinitionId?: string) {
   const filters = useGlobalFilters();
-  const facility = facilityId ?? filters.facilityId;
   return useQuery({
-    queryKey: ['deviations', 'trends', { interval, protocolDefinitionId, facility, ...filters }],
-    queryFn: () => getDeviationTrends({ interval, protocolDefinitionId, ...filters, facilityId: facility }),
+    queryKey: ['deviations', 'trends', { interval, protocolDefinitionId, ...filters }],
+    queryFn: () => getDeviationTrends({ interval, protocolDefinitionId, ...filters }),
   });
 }
 
-export function useDeviationsByAction(protocolDefinitionId?: string, facilityId?: string) {
+export function useDeviationsByAction(protocolDefinitionId?: string) {
   const filters = useGlobalFilters();
-  const facility = facilityId ?? filters.facilityId;
   return useQuery({
-    queryKey: ['deviations', 'by-action', { protocolDefinitionId, facility, ...filters }],
-    queryFn: () => getDeviationsByAction({ protocolDefinitionId, ...filters, facilityId: facility }),
+    queryKey: ['deviations', 'by-action', { protocolDefinitionId, ...filters }],
+    queryFn: () => getDeviationsByAction({ protocolDefinitionId, ...filters }),
   });
 }
 

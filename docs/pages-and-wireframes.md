@@ -3,20 +3,33 @@
 > **CCE Insights UI** — Page-by-page design reference with ASCII wireframes  
 > Each page maps to one or more Insights Service API endpoints. Compliance categories are binary: **Compliant** (`on_track`) and **Non-Compliant** (`non_compliant`).
 > Default date range: **90 days** (`VITE_DEFAULT_DATE_RANGE_DAYS`). The global header is a **District**
-> dropdown + **From / To** date-picker pair (`DistrictFilter` + `DateRangeFilter`). The sidebar links to
-> 7 pages: Dashboard, Facilities, Compliance, Deviations, Patients, Events, Ingestion. (Adoption,
-> Practitioners, Intelligence, and Exports are URL-only / removed — not in the nav.)
+> + **Facility** dropdown pair, then a **From / To** date-picker pair (`DistrictFilter` +
+> `FacilityFilter` + `DateRangeFilter`). The sidebar links to 7 pages: Dashboard, Facilities,
+> Compliance, Deviations, Patients, Events, Ingestion — all 7 render the same District + Facility +
+> date-range header. (Adoption, Practitioners, Intelligence, and Exports are URL-only / removed —
+> not in the nav.)
 
 ---
 
 ## 0. Recent changes & global filters
 
-**Global District filter.** The header carries a `District` dropdown (`DistrictFilter`, options from
-`GET /lookups/districts`) next to the date range. It is URL-synced via `FilterContext.district`,
-threaded through `useGlobalFilters` into every clinical page's query params + queryKeys, and scopes
-results to that district's facilities alongside the date range. **Hidden on the Ingestion page**
-(pipeline health, not clinical-event metrics). Per-facility pickers (e.g. the Compliance Facility
-dropdown, the Events by-facility table) are constrained to the selected district.
+**Global District + Facility filters (RI-56).** The header carries `District` (`DistrictFilter`,
+options from `GET /lookups/districts`) and `Facility` (`FacilityFilter`, options from
+`GET /lookups/facilities`, constrained to the selected district) dropdowns next to the date range.
+Both are URL-synced via `FilterContext`, threaded through `useGlobalFilters` into every page's query
+params + queryKeys, and scope results to the selected district/facility alongside the date range —
+**every page, including Ingestion**, which previously had no district support at all and hid the
+District dropdown entirely. `FacilityFilter` auto-resets to "All Facilities" if the district changes
+and the current selection falls out of scope, and disambiguates two facilities sharing a display
+name by appending the facility id (same convention as the Facility Ranking table).
+
+This pair is now the **only** facility picker in the app. The per-page local facility dropdowns
+previously on Deviations, Compliance Overview, and the Events page's Zero-Match Events table were
+removed in favor of it, and the `DistrictFacilityFilter` bundled control used on 4 cards
+(`PatientReferralCards`, `EbuzimaAdoptionCard`, `ReferralMetricsCard`, `ComplianceFacilityBreakdown`)
+had its Facility half suppressed via a `showFacility={false}` prop; those cards still layer their
+own District refinement on top of the global district. The Facilities page's ranking table also
+lost its "Search Facility" free-text box, now redundant with the global picker.
 
 **Other recent structural changes:**
 - **Dashboard** — the four national indicators (Service Compliance Rate, Total Facilities, eBuzima
@@ -305,7 +318,7 @@ A `Referrals` card sits above the Patient List with four metrics:
 | **Failed Referrals** | placeholder (`—`, definition pending) |
 | **Referral Rate** | placeholder (`—`, definition pending) |
 
-The **Referrals Received by HIE** drill-down lists each patient (→ patient detail) with facility · referral date, and has its **own** District + Facility filter (shared `DistrictFacilityFilter`, same as the Facilities page) — the card value stays the unfiltered total while the drill-down count/list reflect the filter. District is resolved per patient via the facility catalog.
+The **Referrals Received by HIE** drill-down lists each patient (→ patient detail) with facility · referral date, and has its **own** District filter (shared `DistrictFacilityFilter`, same control as the Facilities page, with `showFacility={false}` as of RI-56 — Facility is exclusively the global header filter now) — the card value stays the unfiltered total while the drill-down count/list reflect the district + global facility filter. District is resolved per patient via the facility catalog.
 
 ### Wireframe
 
@@ -401,9 +414,10 @@ The LATE badge renders only for `completionStatus === 'LATE'` (it is no longer s
 **Purpose:** Deviation KPIs, trends, most-deviated steps, and a paginated/searchable deviation list.
 Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 
-> **RI-49:** the page has **Protocol** and **Facility** filters. The Facility dropdown (per-page,
-> district-scoped, `Name (id)`-disambiguated per RI-48) re-scopes **all four** sections — KPI cards,
-> trends, Most Deviated Steps, and the Deviation List — via `facilityId` on every deviation endpoint.
+> **RI-49:** the page has a **Protocol** filter (per-page). Facility scoping is via the global
+> header `Facility` filter (RI-56 — the page's own local Facility dropdown was removed) — it
+> re-scopes **all four** sections — KPI cards, trends, Most Deviated Steps, and the Deviation List
+> — via `facilityId` on every deviation endpoint, same as before.
 
 ### APIs Used
 
@@ -461,6 +475,11 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 **Route:** `/events`  
 **Purpose:** Clinical event metrics — volume by resource type and facility.
 
+Clicking the **Total Events** or **Zero Match Rate** header tiles scrolls to and highlights the
+corresponding section below (By Resource Type / Zero-Match Events Info respectively) — the other
+three tiles (Matched Rate, Duplicates, Pipeline Loss) are not clickable. Both scroll targets carry
+`scroll-mt-24` so the sticky header doesn't cover the top of the section on landing.
+
 ### APIs Used
 
 | Endpoint | Purpose |
@@ -470,6 +489,7 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 | `GET /v1/insights/events/trends` | Volume over time |
 | `GET /v1/insights/events/by-resource-type` | Resource type breakdown (chart) |
 | `GET /v1/insights/events/by-facility` | Facility event counts |
+| `GET /v1/insights/events/zero-match` | "Zero-Match Events Info" table — resource type, code, category, facility, and count for events that matched no protocol step |
 
 ### Wireframe
 
@@ -514,7 +534,13 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 | Tab | Content | API |
 |-----|---------|-----|
 | By Resource Type | `ResourceTypeBarChart` (bar chart) | `events/by-resource-type` |
-| By Facility | Table (Facility / Total Events / Resource Types). API rows are **merged with the full facility reference list** so facilities with 0 events still appear; FOSA IDs resolve to names (duplicates disambiguated). Sorted by total events, **client-side paginated 10/page**. | `events/by-facility` + `facilities/reference` |
+| By Facility | Table (Facility / Total Events / Resource Types). API rows are **merged with the full facility reference list** so facilities with 0 events still appear; FOSA IDs resolve to names (duplicates disambiguated). Sorted by total events, **client-side paginated 10/page**. The zero-fill merge is scoped by both the global District *and* Facility filter as of RI-56 (a prior bug only checked district, so selecting a specific facility still merged in every other facility in that district with a synthetic 0-event row). | `events/by-facility` + `facilities/reference` |
+
+Below the tabs, a separate **Zero-Match Events Info** table lists events that received no protocol
+match (resource type, code, category, facility, count, percentage), server-side scoped by the
+global District/Facility filter and date range. The FACILITY column shows the plain facility name,
+appending `(facilityId)` only on a name collision — same disambiguation convention as the header
+Facility dropdown and the Facility Ranking table (RI-64).
 
 ---
 
@@ -522,8 +548,9 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 
 **Route:** `/facilities`  
 **Purpose:** Facility activity summary, Top 5 / Bottom 5 compliance highlights, and a leaderboard
-ranked by compliance rate, deviation count, or event volume (with a Best/Worst-first toggle and
-facility search). Color-coded compliance column with legend.
+ranked by compliance rate, deviation count, or event volume (with a Best/Worst-first toggle).
+Color-coded compliance column with legend. The table's local "Search Facility" text box was
+removed as of RI-56 — now redundant with the global header Facility filter.
 
 ### APIs Used
 
@@ -548,7 +575,7 @@ facility search). Color-coded compliance column with legend.
 │         │  └───────────────────────────────────┘                            │
 │         │                                                                    │
 │         │  Rank By: [Compliance Rate •] [Deviation Count] [Event Volume]    │
-│         │  Order: [Best First •] [Worst First]   Search: [facility…____]    │
+│         │  Order: [Best First •] [Worst First]                              │
 │         │                                                                    │
 │         │  ┌─ Facility Ranking Table ──────────────────────────────────────┐ │
 │         │  │ Rank │ Facility │ Referrals │ Tracked Pts │ Compliance │ Dev│Ev│ │
@@ -594,8 +621,9 @@ Hosts the `EbuzimaAdoptionCard`: a country-level summary that **drills down** to
   Rate (Σ actual ÷ Σ expected). Click the card to expand the detail.
 - **Drill-down table** (per facility): District · Facility · Expected Visits · Actual Visits ·
   Reporting Gap (±, red = under-reporting) · Adoption Rate (colour-coded ≥80 / ≥50 / <50), with a
-  **District + Facility filter** (shared `DistrictFacilityFilter`) and pagination. Sorted district
-  A→Z, facility A→Z, then highest rate.
+  **District filter** (shared `DistrictFacilityFilter`, `showFacility={false}` as of RI-56 —
+  Facility is exclusively the global header filter now) and pagination. Sorted district A→Z,
+  facility A→Z, then highest rate.
 - The global date filter scopes the period (multi-day aggregation via `getAdoptionKpisByDateRange`).
 
 **Adoption-rate rule (RI-43):** when there is **no expected baseline** (`expected = 0`), the rate is
@@ -690,7 +718,11 @@ deliveries by destination, active adaptors, and the protocol's intelligence acti
 ## 11. Ingestion Pipeline
 
 **Route:** `/ingestion`  
-**Purpose:** Ingestion health monitoring — acceptance/rejection funnel, rejection reasons, source quality, pipeline loss detection.
+**Purpose:** Ingestion health monitoring — acceptance/rejection funnel, rejection reasons, source quality, pipeline loss detection, last-ingested-event freshness.
+
+> **RI-56:** as of this ticket, this page also renders the global **District** and **Facility**
+> header filters (previously the only page without them — the backend had no district support at
+> all for ingestion metrics). All 5 endpoints below now accept `district` alongside `facilityId`.
 
 ### APIs Used
 
@@ -700,6 +732,7 @@ deliveries by destination, active adaptors, and the protocol's intelligence acti
 | `GET /v1/insights/ingestion/rejections` | Rejection reason analytics |
 | `GET /v1/insights/ingestion/source-quality` | Per-source acceptance rates |
 | `GET /v1/insights/ingestion/pipeline-loss` | Lost events detection |
+| `GET /v1/insights/ingestion/last-event` | "Last Ingested Event" tile — most recent `received_at` for the selected district/facility scope, **not** filtered by date range, polled every `VITE_POLLING_INTERVAL` ms and uncached server-side (pipeline-freshness indicator) |
 
 ### Wireframe
 
@@ -805,9 +838,14 @@ Global date range filter (`DateRangeFilter.tsx`). Two date inputs (From/To) in t
 
 ### FacilityFilter / ProtocolFilter
 
-`FacilityFilter.tsx` and `ProtocolFilter.tsx` are **per-page** dropdowns (not in the global header).
-`ProtocolFilter` is used on Deviations, Intelligence, and Practitioner Analytics; `FacilityFilter` is
-used where a page scopes by facility (e.g. Compliance Overview). There is no global facility selector.
+As of **RI-56**, `FacilityFilter.tsx` is a **global header** dropdown (mirrors `DistrictFilter.tsx`
+— renders next to it, before the date range, on every page). It reads/writes `facilityId` on
+`FilterContext`, constrains its options to the selected district, auto-resets to "All Facilities"
+if the district changes and the current selection falls out of scope, and disambiguates same-name
+facilities with `(facilityId)`. It replaced every previous per-page local facility dropdown.
+
+`ProtocolFilter.tsx` remains a **per-page** dropdown (not in the global header) — used on
+Deviations, Intelligence, and Practitioner Analytics.
 
 ### Pagination components
 
@@ -832,7 +870,7 @@ Horizontal stacked bar showing proportions. Used for status breakdown, complianc
 - **EmptyState** (`EmptyState.tsx`) — No data placeholder
 - **LoadingSpinner** (`LoadingSpinner.tsx`) — Tailwind spinner
 - **ClickableMetricGroup** (`ClickableMetricGroup.tsx`, RI-35) — a group of metric tiles in one white `Card` (title + info ⓘ); clicking the tiles toggles a `detail` drill-down rendered inside the same card.
-- **DistrictSelect** (`DistrictSelect.tsx`, RI-35) — exports `DistrictFacilityFilter` (cascading District→Facility dropdowns), `LabeledSelect` (status/category filter), and the `filterByDistrictFacility` / `districtOptions` client-side helpers used by every drill-down.
+- **DistrictSelect** (`DistrictSelect.tsx`, RI-35) — exports `DistrictFacilityFilter` (cascading District→Facility dropdowns; as of RI-56 takes an optional `showFacility?: boolean` prop, default `true`, so callers relying on the global `FacilityFilter` instead can suppress the Facility half — used by the 4 cards under `components/facilities/` and `components/patients/`), `LabeledSelect` (status/category filter), and the `filterByDistrictFacility` / `districtOptions` client-side helpers used by every drill-down.
 
 ### Facility cards (`components/facilities/`)
 
@@ -841,7 +879,8 @@ Horizontal stacked bar showing proportions. Used for status breakdown, complianc
 - **ComplianceFacilityBreakdown** (RI-35) — Service Compliance drill-down (per-facility compliant/non-compliant/rate from `facilities/ranking`), rendered inside the compliance card.
 - **FacilityActivityCards** — Dashboard/Facilities Facility Status card: total/active/inactive + inline per-facility drill-down.
 - **FacilityHighlightsCard** — Top 5 / Bottom 5 facilities by compliance (Facility Analytics).
-- **FacilityRankingCard** — ranked facility leaderboard with Rank-By pills + order toggle + search.
+- **FacilityRankingCard** — ranked facility leaderboard with Rank-By pills + order toggle. Local
+  facility search box removed as of RI-56 (redundant with the global header Facility filter).
 
 ### DataTable
 

@@ -1038,14 +1038,20 @@ import type {
   FacilityActivitySummary, FacilityReference, AdoptionKpi,
 } from './types';
 
-// Facility activity cards (total / active / inactive). Dates truncated to YYYY-MM-DD.
+// Facility activity cards (total / active / inactive). Dates truncated to YYYY-MM-DD. Respects
+// the global facility + district filters (facilityId takes precedence server-side when both are
+// given — see cce-insights-service docs/api-reference.md §9.2).
 export function getFacilityActivitySummary(params?: {
   startDate?: string;
   endDate?: string;
+  facilityId?: string;
+  district?: string;
 }): Promise<FacilityActivitySummary> {
   return apiGet('/facilities/activity-summary', {
-    startDate: params?.startDate?.substring(0, 10),
-    endDate: params?.endDate?.substring(0, 10),
+    startDate: params?.startDate ? params.startDate.substring(0, 10) : undefined,
+    endDate: params?.endDate ? params.endDate.substring(0, 10) : undefined,
+    facilityId: params?.facilityId,
+    district: params?.district,
   });
 }
 
@@ -1145,12 +1151,13 @@ export function getRepeatDeviations(params?: {
 // src/api/ingestion.ts
 import { apiGet } from './client';
 import type {
-  IngestionFunnel, RejectionAnalytics, SourceDataQuality, PipelineLoss,
+  IngestionFunnel, RejectionAnalytics, SourceDataQuality, PipelineLoss, LastIngestedEvent,
 } from './types';
 
 export function getIngestionFunnel(params?: {
   facilityId?: string;
   source?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
   interval?: string;
@@ -1161,6 +1168,7 @@ export function getIngestionFunnel(params?: {
 export function getIngestionRejections(params?: {
   facilityId?: string;
   source?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<RejectionAnalytics> {
@@ -1169,6 +1177,7 @@ export function getIngestionRejections(params?: {
 
 export function getSourceQuality(params?: {
   facilityId?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<SourceDataQuality> {
@@ -1177,12 +1186,34 @@ export function getSourceQuality(params?: {
 
 export function getPipelineLoss(params?: {
   facilityId?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<PipelineLoss> {
   return apiGet('/ingestion/pipeline-loss', params);
 }
+
+export function getLastIngestedEvent(params?: {
+  facilityId?: string;
+  district?: string;
+}): Promise<LastIngestedEvent> {
+  return apiGet('/ingestion/last-event', params);
+}
 ```
+
+> **`useLastIngestedEvent()`** (`useIngestion.ts`) reads `facilityId`/`district` from
+> `useGlobalFilters()` but deliberately does **not** pass the date range — it always reflects the
+> true latest ingest for the selected scope (pipeline freshness), not the latest within whatever
+> From/To is selected. It polls every `VITE_POLLING_INTERVAL` ms (default 60000) via
+> `refetchInterval`, and the backend endpoint is intentionally uncached for the same freshness
+> reason. `formatRelative` (`utils/dates.ts`, wraps `date-fns`'s `formatDistanceToNow`) renders
+> the returned timestamp as "about N hours ago" — its rounding buckets switch at fixed thresholds
+> (e.g. "about 1 hour" covers up to ~89.5 minutes), so the displayed bucket can appear to lag by
+> up to a poll interval right at a boundary; this is expected `date-fns` behavior, not a bug.
+>
+> As of RI-56, Ingestion also supports the global `district` filter end-to-end (previously the
+> only page without it) — threaded through the repository layer via the same `districtScope(...)`
+> helper used everywhere else in the backend.
 
 ### 3.9 Exports
 
@@ -1514,12 +1545,23 @@ export function useGlobalFilters(): GlobalFilters {
 > `dateFilterMode` is **not** a global filter — it is a per-query param on `getProtocolPatients` /
 > `useProtocolPatients` (§3.1, §4.1), driven by a local radio on the Patient List page.
 
-> **Global District filter.** A `District` dropdown in the header (`DistrictFilter`, options from
-> `useDistricts` → `GET /lookups/districts`) sets `district` on the FilterContext (URL-synced). It is
-> threaded into every clinical page's query params + queryKeys and scopes results to that district's
-> facilities alongside the date range. It is **hidden on the Ingestion page** (pipeline health, not a
-> clinical-event metric) and Ingestion queries do not send it. Per-facility pickers (e.g. the
-> Compliance Facility dropdown) are constrained to the selected district.
+> **Global District + Facility filters (RI-56).** Two dropdowns in the header — `District`
+> (`DistrictFilter`, options from `useDistricts` → `GET /lookups/districts`) and `Facility`
+> (`FacilityFilter`, options from `useFacilityLookup` → `GET /lookups/facilities`, filtered to the
+> selected district) — set `district`/`facilityId` on the FilterContext (both URL-synced). Both
+> render unconditionally on **every** page, including Ingestion (previously the only page without
+> district support — see §3.8). `FacilityFilter` auto-resets to "All Facilities" if the selected
+> district changes and the current facility no longer belongs to it, and disambiguates two
+> facilities that share a display name by appending the facility id (`formatFacilityDisplayName`,
+> same convention used by the Facility Ranking table and other facility-id-bearing tables).
+>
+> As of RI-56, this pair is the **only** facility picker on the app — the per-page local facility
+> dropdowns previously on Deviations, Compliance Overview, and the Events page's Zero-Match table
+> were removed (those hooks now read `facilityId` solely from `useGlobalFilters()`), and the
+> `DistrictFacilityFilter` bundled control (`DistrictSelect.tsx`, used on 4 facility/patient/referral
+> cards) took a `showFacility?: boolean` prop (default `true`) so those cards can suppress their own
+> Facility half and read the global one instead — their District half is unchanged, still a
+> per-card refinement layered on top of the global district.
 
 ### 4.6 Other hook modules
 

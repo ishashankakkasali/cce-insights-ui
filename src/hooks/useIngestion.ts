@@ -36,11 +36,16 @@ export function usePipelineLoss() {
   });
 }
 
-/** Unfiltered by date range — always reflects the true latest ingest for pipeline freshness. */
+/**
+ * Respects facilityId/district (so "is THIS facility/district still sending data" works), but is
+ * deliberately unfiltered by date range — always reflects the true latest ingest for the selected
+ * scope, for pipeline freshness, not the latest within whatever From/To is selected.
+ */
 export function useLastIngestedEvent() {
+  const { facilityId, district } = useGlobalFilters();
   return useQuery({
-    queryKey: ['ingestion', 'last-event'],
-    queryFn: () => getLastIngestedEvent(),
+    queryKey: ['ingestion', 'last-event', facilityId, district],
+    queryFn: () => getLastIngestedEvent({ facilityId, district }),
     refetchInterval: LAST_EVENT_POLL_INTERVAL,
   });
 }

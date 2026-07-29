@@ -4,16 +4,14 @@ import { useGlobalFilters } from './useGlobalFilters';
 
 export function useProtocolComplianceSummary(
   protocolDefinitionId: string,
-  facilityId?: string,
   dateFilterMode: 'enrollment' | 'eventTime' = 'enrollment',
 ) {
   const filters = useGlobalFilters();
-  const effectiveFilters = { ...filters, ...(facilityId ? { facilityId } : {}) };
   return useQuery({
-    queryKey: ['compliance', 'summary', protocolDefinitionId || 'all', dateFilterMode, effectiveFilters],
+    queryKey: ['compliance', 'summary', protocolDefinitionId || 'all', dateFilterMode, filters],
     queryFn: () => protocolDefinitionId
-      ? getProtocolComplianceSummary(protocolDefinitionId, effectiveFilters, dateFilterMode)
-      : getAllProtocolsComplianceSummary(effectiveFilters, dateFilterMode),
+      ? getProtocolComplianceSummary(protocolDefinitionId, filters, dateFilterMode)
+      : getAllProtocolsComplianceSummary(filters, dateFilterMode),
   });
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '../shared/Card';
 import { LoadingSpinner } from '../shared/LoadingSpinner';
@@ -7,9 +7,9 @@ import { TableRangePagination } from '../shared/TableRangePagination';
 import { useFacilityRanking, useAdoptionKpis, useFacilityActivityDetail } from '../../hooks/useFacilities';
 import { useReferralsKpi } from '../../hooks/useDashboard';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
-import { getFacilityName } from '../../utils/facilityNames';
 import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../../utils/facilityDisplay';
 import { SORT_ORDER_OPTIONS } from '../../config';
+import { FilterContext } from '../../context/FilterContext';
 import type { SortOrder, AdoptionKpi } from '../../api/types';
 import type { FacilityStatusFilter } from './FacilityActivityCards';
 
@@ -25,10 +25,10 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: FacilityStatusFilter }) {
+  const { district, setFacilityId, setDistrict } = useContext(FilterContext);
   const [sortKey, setSortKey] = useState<SortKey>('referrals');
   const [order, setOrder] = useState<SortOrder>('desc');
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
 
   // Fetch all facility rows once; ordering is applied client-side below.
   const ranking = useFacilityRanking({ rankBy: 'complianceRate', order: 'desc', limit: 200 });
@@ -68,18 +68,13 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
       const wantActive = statusFilter === 'active';
       rows = rows.filter((f) => (activeByFacility.get(f.facilityId) ?? false) === wantActive);
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      rows = rows.filter((f) =>
-        (f.facilityName ?? getFacilityName(f.facilityId)).toLowerCase().includes(q));
-    }
     // Client-side sort by the selected metric + order (Best First = desc, Worst First = asc).
     rows.sort((a, b) => {
       const diff = sortValue(a.facilityId, a.complianceRate) - sortValue(b.facilityId, b.complianceRate);
       return order === 'desc' ? -diff : diff;
     });
     return rows;
-  }, [ranking.data, search, statusFilter, activeByFacility, sortValue, order]);
+  }, [ranking.data, statusFilter, activeByFacility, sortValue, order]);
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / TABLE_PAGE_SIZE));
   const paginatedRows = useMemo(
@@ -92,7 +87,7 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
     [filteredRows],
   );
 
-  useEffect(() => { setPage(1); }, [sortKey, order, search, statusFilter]);
+  useEffect(() => { setPage(1); }, [sortKey, order, statusFilter]);
   useEffect(() => {
     if (page > totalPages) setPage(totalPages);
   }, [page, totalPages]);
@@ -129,17 +124,6 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
               {opt.label}
             </button>
           ))}
-        </div>
-        <div className="flex-1" />
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500">Search Facility</label>
-          <input
-            type="text"
-            placeholder="Enter facility name..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-56 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          />
         </div>
       </div>
 
@@ -191,7 +175,16 @@ export function FacilityRankingCard({ statusFilter = 'all' }: { statusFilter?: F
                         <td className="py-2 pr-4 font-bold text-gray-400">{rank}</td>
                         <td className="py-2 pr-4 font-medium">
                           <Link
-                            to={`/compliance?facility=${encodeURIComponent(f.facilityId)}`}
+                            to={`/compliance?facilityId=${encodeURIComponent(f.facilityId)}`}
+                            onClick={() => {
+                              // Set the global Facility filter directly — FilterContext only reads the
+                              // URL once on mount, so a same-tab SPA navigation via `to=` alone would
+                              // leave the header dropdown (and every hook reading it) still on the old
+                              // selection. Also clear District if it conflicts, so FacilityFilter's own
+                              // district-scoping auto-reset doesn't silently undo this selection.
+                              if (f.district && district && f.district !== district) setDistrict(undefined);
+                              setFacilityId(f.facilityId);
+                            }}
                             className="text-blue-600 hover:text-blue-700 hover:underline"
                             title="Open this facility on the Compliance page"
                           >

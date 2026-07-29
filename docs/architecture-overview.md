@@ -177,7 +177,7 @@ flowchart TD
 | **Hooks** | TanStack Query wrappers; return `{ data, isLoading, error }` | One hook per API endpoint group; receive global filters from context |
 | **API** | Typed `fetch` wrappers; URL construction, error parsing, envelope unwrapping (12 endpoint modules + `client.ts` + `types.ts`) | No React dependencies; pure TypeScript |
 | **Auth** | `client.ts` injects `Authorization: Bearer <token>` where token = live Keycloak access token (`getToken()`) or `VITE_AUTH_TOKEN` fallback | Applied only when `authEnabled` (`VITE_AUTH_ENABLED==='true'`); `keycloak-js` runs Authorization Code + PKCE login on load |
-| **Context** | Global filter state (date range, facility) shared across pages | Persisted in URL search params for shareability |
+| **Context** | Global filter state (date range, district, facility) shared across pages | Persisted in URL search params for shareability |
 | **Utils** | Pure functions for formatting, computation, color mapping | No side effects |
 
 ### Authentication (`src/auth/keycloak.ts`)
@@ -211,7 +211,8 @@ full Keycloak + gateway deployment procedure.
 ```
 App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 ├── Sidebar (flat nav list — 7 links)
-├── Header (global DateRangeFilter + Sign-out button when authEnabled)
+├── Header (global DistrictFilter + FacilityFilter + DateRangeFilter + Sign-out button when
+│           authEnabled — RI-56: District/Facility render on every page, no exceptions)
 ├── <Routes> (inline; pages are React.lazy + Suspense)
 │
 ├── / → DashboardPage    (RI-38: high-level NATIONAL indicators only — each KpiCard links to its section)
@@ -224,7 +225,7 @@ App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 │          Detail breakdowns AND trend charts were moved to their own section pages — RI-38.)
 │
 ├── /compliance → ComplianceOverviewPage
-│   ├── ProtocolSelector + FacilityFilter (dropdowns)
+│   ├── ProtocolSelector (dropdown; facility scoping is via the global header filter, RI-56)
 │   ├── ComplianceSummaryCards (Tracked / Compliant / Non-Compliant Patients, Compliance Rate)
 │   ├── Transactions tiles (Total Steps, Completed, Due, Overdue, Missed, Pending)
 │   └── Service Workflow Compliance (vertical timeline with collapsible sub-actions)
@@ -254,15 +255,19 @@ App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 │   └── Deviation List (type pills + patient search, page pagination)
 │
 ├── /events → EventVolume
-│   ├── KPI cards × 5 (Total Events, Matched Rate, Zero Match Rate, Duplicates, Pipeline Loss)
+│   ├── KPI cards × 5 (Total Events, Matched Rate, Zero Match Rate, Duplicates, Pipeline Loss —
+│   │        Total Events / Zero Match Rate are click-to-jump to their section below)
 │   ├── EventTrendChart (stacked area by resource type)
-│   └── Tabs: By Resource Type (chart) | By Facility (table merged with facility
-│            reference list — 0-event facilities included; client-side pagination 10/page)
+│   ├── Tabs: By Resource Type (chart) | By Facility (table merged with facility
+│   │        reference list — 0-event facilities included, scoped by district AND facility;
+│   │        client-side pagination 10/page)
+│   └── Zero-Match Events Info table (resource type / code / category / facility / count;
+│            server-side scoped by district + facility + date range)
 │
 ├── /facilities → FacilityAnalytics
 │   ├── Facility activity cards × 3 (Total / Active / Inactive)
 │   ├── FacilityHighlightsCard (Top 5 / Bottom 5 by compliance)
-│   └── FacilityRankingCard (Rank-By pills + Best/Worst-First toggle + search;
+│   └── FacilityRankingCard (Rank-By pills + Best/Worst-First toggle;
 │            color-coded compliance column with legend)
 │
 ├── /practitioners → PractitionerAnalytics  (URL-only; not in sidebar)
@@ -275,7 +280,10 @@ App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 │   ├── Active Adaptors & Routing table
 │   └── Intelligence Actions table (# / Action / Trigger / Parent Step)
 │
-├── /ingestion → IngestionPipeline
+├── /ingestion → IngestionPipeline  (RI-56: now supports the global District filter too —
+│   │        previously the only page without district support server-side)
+│   ├── KPI tiles incl. "Last Ingested Event" (polled, uncached, not date-filtered — pipeline
+│   │        freshness for the selected district/facility scope)
 │   ├── IngestionFunnelChart (ACCEPTED/REJECTED/DUPLICATE)
 │   ├── RejectionReasonChart (bar — by rejection reason)
 │   ├── SourceQualityTable (per-source acceptance/rejection rates)

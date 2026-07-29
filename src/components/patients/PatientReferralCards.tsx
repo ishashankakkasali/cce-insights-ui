@@ -13,6 +13,7 @@ import {
 } from '../shared/DistrictSelect';
 import { usePatientReferralsReceived } from '../../hooks/usePatients';
 import { useFacilityRanking } from '../../hooks/useFacilities';
+import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { formatNumber } from '../../utils/formatters';
 import { formatDate } from '../../utils/dates';
 
@@ -24,21 +25,23 @@ const PAGE_SIZE = 12; // divisible by 2 and 3 — fills the drill-down grid rows
  * of the patients behind it (→ patient detail). "Created" and "Failed" are placeholders pending a
  * product definition (non-clickable, value "—").
  *
- * The drill-down has its OWN District + Facility filter (shared DistrictFacilityFilter, same as the
- * Facilities-page Facility Status drill-down). Referral rows carry a facility but no district, so the
- * district is resolved via the facility catalog (useFacilityRanking, which includes district) — the
- * same list that feeds the filter's options. Card values stay the unfiltered totals; the drill-down
- * count + list reflect the filter.
+ * The drill-down has its own District filter (shared DistrictFacilityFilter, District-only mode,
+ * same as the Facilities-page Facility Status drill-down). Facility is the global header filter now
+ * (RI-56). Referral rows carry a facility but no district, so the district is resolved via the
+ * facility catalog (useFacilityRanking, which includes district) — the same list that feeds the
+ * filter's options. Card values stay the unfiltered totals; the drill-down count + list reflect the
+ * filter.
  */
 export function PatientReferralCards({ className }: { className?: string }) {
   const received = usePatientReferralsReceived();
   // Facility catalog for the filter options + district resolution (facilityId/facilityName/district).
   const facilityRanking = useFacilityRanking({ rankBy: 'complianceRate', order: 'asc', limit: 1000 });
   const facilityCatalog = facilityRanking.data?.data ?? [];
+  const { facilityId: globalFacilityId } = useGlobalFilters();
+  const facility = globalFacilityId ?? ALL_FACILITIES;
 
   const [open, setOpen] = useState(false);
   const [district, setDistrict] = useState<string>(ALL_DISTRICTS);
-  const [facility, setFacility] = useState<string>(ALL_FACILITIES);
   const [page, setPage] = useState(1);
 
   const allRows = received.data ?? [];
@@ -48,7 +51,7 @@ export function PatientReferralCards({ className }: { className?: string }) {
     () => new Map(facilityCatalog.map((f) => [f.facilityId, f.district])),
     [facilityCatalog],
   );
-  // Referral patients narrowed by the drill-down's District + Facility filter.
+  // Referral patients narrowed by the drill-down's District filter + the global Facility filter.
   const patients = useMemo(() => {
     const rows = allRows.map((r) => ({ ...r, district: districtByFacilityId.get(r.facilityId) }));
     return filterByDistrictFacility(rows, district, facility);
@@ -109,9 +112,8 @@ export function PatientReferralCards({ className }: { className?: string }) {
                 idPrefix="referrals"
                 options={facilityCatalog}
                 district={district}
-                facility={facility}
                 onDistrictChange={setDistrict}
-                onFacilityChange={setFacility}
+                showFacility={false}
               />
             )}
           </div>
