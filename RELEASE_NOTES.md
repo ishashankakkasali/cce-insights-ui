@@ -4,6 +4,44 @@
 
 ## Unreleased
 
+### Global Top-Level Facility Filter + Ingestion District Parity (RI-56)
+
+- **New global `Facility` filter** in the header, next to `District`, before the date range —
+  consistently scopes Dashboard, Patients, Compliance, Deviations, Events, and Ingestion.
+  Defaults to "All Facilities". Options are constrained to the selected District and auto-reset
+  to "All Facilities" if the district changes and the current selection no longer belongs to it.
+  Same-name facilities (e.g. two "NCD Upazila" in different districts) are disambiguated with
+  `(facilityId)`, matching the existing convention used elsewhere (Facility Ranking table, etc.).
+- **Removed the ~6 per-page/per-card local facility pickers** this replaces: Deviations,
+  Compliance Overview, the Events page's Zero-Match Events table, and the Facility half of the
+  bundled `DistrictFacilityFilter` control on 4 cards (`PatientReferralCards`,
+  `EbuzimaAdoptionCard`, `ReferralMetricsCard`, `ComplianceFacilityBreakdown` — District remains a
+  per-card refinement on these). Also removed the now-redundant "Search Facility" text box on the
+  Facilities page's ranking table.
+- **District filter now renders on every page, including Ingestion** — previously hidden there
+  because the backend had no district support at all for ingestion metrics; added end-to-end
+  (funnel, rejections, source-quality, pipeline-loss, last-event).
+- **Bug fix — dropdown header reflow:** `District`/`Facility` used `max-w-[12rem]`, so the
+  `<select>` shrank/grew to fit the selected option's text width, shifting every control to its
+  right (Facility, dates, Sign out) each time the selection changed. Fixed to a stable `w-48`.
+- **Bug fix — Dashboard "Total Facilities" ignoring a combined district+facility selection**
+  (frontend dropdown wasn't scoped to the selected district, plus a backend controller
+  branch-order bug — see cce-insights-service release notes).
+- **Bug fix — Ingestion metrics not responding to District/Facility changes:** root cause was
+  `@Cacheable` cache keys on the backend not including the new params (see service release notes).
+- **Bug fix — Events page "By Facility" table not narrowing to the selected facility:** the
+  backend already scoped correctly, but the frontend's zero-fill merge (which re-adds facilities
+  with no events so they still show a 0 row) only accounted for the district filter, so selecting
+  a specific facility still merged in every other facility in that district with a synthetic
+  0-event row. Fixed `scopedFacilities`/the merge guard in `EventVolume.tsx` to also filter by
+  `facilityId`.
+- **Bug fix — jump-to-card scroll landing under the sticky header:** clicking the Total Events /
+  Zero Match Rate metric cards scrolls to and highlights the corresponding section
+  (`scrollIntoView({ block: 'start' })`), but the header (`sticky top-0 z-20`) has no way to
+  account for its own height, so the target card's top/title got tucked under it — worse on
+  narrower windows where the header wraps to two lines. Fixed with `scroll-mt-24` on both scroll
+  targets in `EventVolume.tsx`.
+
 ### Patient Compliance — Date Filter Mode Toggle
 
 - **Radio button toggle** added to the Patient Compliance page (`PatientList.tsx`) between the status filter buttons and the search box. Options: **Enrollment Date** (default) / **Activity Date**.

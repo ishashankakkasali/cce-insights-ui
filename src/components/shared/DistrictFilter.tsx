@@ -16,7 +16,7 @@ export function DistrictFilter() {
       <select
         value={district ?? ''}
         onChange={(e) => setDistrict(e.target.value || undefined)}
-        className="max-w-[12rem] truncate rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        className="w-48 truncate rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       >
         <option value="">All Districts</option>
         {districts.data?.map((d) => (

@@ -4,6 +4,7 @@ import type { IngestionFunnel, RejectionAnalytics, SourceDataQuality, PipelineLo
 export function getIngestionFunnel(params?: {
   facilityId?: string;
   source?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
   interval?: string;
@@ -14,6 +15,7 @@ export function getIngestionFunnel(params?: {
 export function getIngestionRejections(params?: {
   facilityId?: string;
   source?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<RejectionAnalytics> {
@@ -22,6 +24,7 @@ export function getIngestionRejections(params?: {
 
 export function getSourceQuality(params?: {
   facilityId?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<SourceDataQuality> {
@@ -30,12 +33,16 @@ export function getSourceQuality(params?: {
 
 export function getPipelineLoss(params?: {
   facilityId?: string;
+  district?: string;
   startDate?: string;
   endDate?: string;
 }): Promise<PipelineLoss> {
   return apiGet('/ingestion/pipeline-loss', params);
 }
 
-export function getLastIngestedEvent(): Promise<LastIngestedEvent> {
-  return apiGet('/ingestion/last-event');
+export function getLastIngestedEvent(params?: {
+  facilityId?: string;
+  district?: string;
+}): Promise<LastIngestedEvent> {
+  return apiGet('/ingestion/last-event', params);
 }

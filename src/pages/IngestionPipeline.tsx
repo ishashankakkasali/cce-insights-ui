@@ -41,7 +41,7 @@ export default function IngestionPipeline() {
               title="Last Ingested Event"
               value={lastEvent.data?.lastEventTime ? formatRelative(lastEvent.data.lastEventTime) : '—'}
               subtitle={lastEvent.data?.lastEventTime ? formatDateTime(lastEvent.data.lastEventTime) : undefined}
-              description="Timestamp the collector last received an inbound event, across all sources — independent of the selected date range. Indicates whether the pipeline is actively receiving data."
+              description="Timestamp the collector last received an inbound event for the selected district/facility, across all sources — independent of the selected date range. Indicates whether the pipeline is actively receiving data."
             />
           </div>
 

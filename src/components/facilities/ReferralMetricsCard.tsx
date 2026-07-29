@@ -8,6 +8,7 @@ import {
   ALL_DISTRICTS, ALL_FACILITIES,
 } from '../shared/DistrictSelect';
 import { useReferralsKpi } from '../../hooks/useDashboard';
+import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../../utils/facilityDisplay';
 
@@ -21,10 +22,11 @@ const PAGE_SIZE = 10;
  */
 export function ReferralMetricsCard({ className }: { className?: string }) {
   const referrals = useReferralsKpi();
+  const { facilityId: globalFacilityId } = useGlobalFilters();
+  const facility = globalFacilityId ?? ALL_FACILITIES;
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState<'all' | 'compliant' | 'noncompliant'>('all');
   const [district, setDistrict] = useState<string>(ALL_DISTRICTS);
-  const [facility, setFacility] = useState<string>(ALL_FACILITIES);
   const [page, setPage] = useState(1);
 
   const data = referrals.data;
@@ -80,9 +82,8 @@ export function ReferralMetricsCard({ className }: { className?: string }) {
             idPrefix="referral"
             options={data?.byFacility ?? []}
             district={district}
-            facility={facility}
             onDistrictChange={setDistrict}
-            onFacilityChange={setFacility}
+            showFacility={false}
           />
         </div>
       </div>

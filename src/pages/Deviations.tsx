@@ -30,8 +30,6 @@ export default function Deviations() {
   };
   const protocolId = searchParams.get('protocol') ?? '';
   const setProtocolId = (v: string) => setParam('protocol', v);
-  const facilityId = searchParams.get('facility') ?? '';
-  const setFacilityId = (v: string) => setParam('facility', v);
   const rawType = searchParams.get('type') ?? '';
   const deviationType = ['OVERDUE', 'MISSED', 'ORDER_VIOLATION'].includes(rawType) ? rawType : '';
   const setDeviationType = (v: string) => setParam('type', v);
@@ -43,18 +41,11 @@ export default function Deviations() {
   const filters = useGlobalFilters();
 
   const protocolFilter = protocolId || undefined;
-  const facilityFilter = facilityId || undefined;
-  const deviationKpis = useDeviationKpis(protocolFilter, facilityFilter);
-  const trends = useDeviationTrends(interval, protocolFilter, facilityFilter);
-  const byAction = useDeviationsByAction(protocolFilter, facilityFilter);
+  const deviationKpis = useDeviationKpis(protocolFilter);
+  const trends = useDeviationTrends(interval, protocolFilter);
+  const byAction = useDeviationsByAction(protocolFilter);
   const actionOrder = useActionOrder(protocolId);
   const facilities = useFacilityLookup();
-
-  // RI-49: Facility picker options, constrained to the globally-selected district.
-  const facilityOptions = useMemo(
-    () => (facilities.data ?? []).filter((f) => !filters.district || f.district === filters.district),
-    [facilities.data, filters.district],
-  );
 
   const actionNameMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -86,12 +77,11 @@ export default function Deviations() {
     );
 
   const deviationList = useQuery({
-    queryKey: ['deviations', 'list', { deviationType, protocolDefinitionId: protocolFilter, facilityFilter, ...filters }],
+    queryKey: ['deviations', 'list', { deviationType, protocolDefinitionId: protocolFilter, ...filters }],
     queryFn: () => getDeviations({
       deviationType: deviationType || undefined,
       protocolDefinitionId: protocolFilter,
       ...filters,
-      facilityId: facilityFilter,
       limit: 1000,
     }),
   });
@@ -119,21 +109,6 @@ export default function Deviations() {
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500">Protocol</label>
           <ProtocolFilter value={protocolId} onChange={setProtocolId} />
-        </div>
-        <div>
-          <label className="mb-1 block text-xs font-medium text-gray-500">Facility</label>
-          <select
-            value={facilityId}
-            onChange={(e) => { setFacilityId(e.target.value); setPage(1); }}
-            className="w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-          >
-            <option value="">All Facilities</option>
-            {facilityOptions.map((f) => (
-              <option key={f.id} value={f.id}>
-                {formatFacilityDisplayName({ facilityId: f.id, facilityName: f.name }, duplicateFacilityNames)}
-              </option>
-            ))}
-          </select>
         </div>
       </div>
 

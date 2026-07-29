@@ -5,6 +5,7 @@ import { TableRangePagination } from '../shared/TableRangePagination';
 import { ClickableMetricGroup } from '../shared/ClickableMetricGroup';
 import { DistrictFacilityFilter, filterByDistrictFacility, ALL_DISTRICTS, ALL_FACILITIES } from '../shared/DistrictSelect';
 import { useAdoptionKpis } from '../../hooks/useFacilities';
+import { useGlobalFilters } from '../../hooks/useGlobalFilters';
 import { formatNumber, formatPercentage } from '../../utils/formatters';
 import { findDuplicateFacilityNames, formatFacilityDisplayName } from '../../utils/facilityDisplay';
 
@@ -12,9 +13,10 @@ const TABLE_PAGE_SIZE = 10;
 
 export function EbuzimaAdoptionCard({ className }: { className?: string }) {
   const adoption = useAdoptionKpis();
+  const { facilityId: globalFacilityId } = useGlobalFilters();
+  const facility = globalFacilityId ?? ALL_FACILITIES;
   const [open, setOpen] = useState(false);
   const [district, setDistrict] = useState<string>(ALL_DISTRICTS);
-  const [facility, setFacility] = useState<string>(ALL_FACILITIES);
   const [page, setPage] = useState(1);
 
   const adoptionRows = adoption.data ?? [];
@@ -72,9 +74,8 @@ export function EbuzimaAdoptionCard({ className }: { className?: string }) {
           idPrefix="adoption"
           options={adoptionRows}
           district={district}
-          facility={facility}
           onDistrictChange={setDistrict}
-          onFacilityChange={setFacility}
+          showFacility={false}
         />
       </div>
       {filteredRows.length === 0 ? (
