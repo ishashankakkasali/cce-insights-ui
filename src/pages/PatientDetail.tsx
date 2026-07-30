@@ -334,11 +334,6 @@ export default function PatientDetail() {
                                 ON TIME
                               </span>
                             )}
-                            {step.completionStatus === 'EARLY' && (
-                              <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-green-700 bg-green-100">
-                                EARLY
-                              </span>
-                            )}
                             {step.source && (
                               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${getSourceColor(step.source)}`}>
                                 {step.source}
