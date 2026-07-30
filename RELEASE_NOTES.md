@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+### MoH Branding — Logo + Government Header (RI-67)
+
+- **Sidebar:** the placeholder blue "C" square is replaced with the official Rwanda MoH seal,
+  and the home link now shows two lines — "CCE Insights" (bold, `#1d5fae`) over "MOH Digital
+  Health" (small, gray). The logo block is a fixed `72px` tall, intentionally taller than the
+  global header so their border-bottom lines don't land on the same y-position and read as one
+  continuous line across the page.
+- **Global header:** background changed from plain white to `#1d5fae` (same blue as the RI-66
+  Keycloak login page), with the MoH seal + "Republic of Rwanda" / "Care Coordination Engine"
+  added on the left. The existing `District`/`Facility`/date-range filters and the Sign-out
+  button stay in place on the right — only re-tinted for contrast (labels light blue instead of
+  gray; `<select>`/date `<input>` given an explicit white background, previously implicit and
+  reading as translucent against the new blue).
+- Same source logo as RI-66 (`src/assets/rwanda-moh-logo-full.png`) — first image asset in this
+  repo, establishing the `src/assets/` + ESM `import` convention.
+
 ### Global Top-Level Facility Filter + Ingestion District Parity (RI-56)
 
 - **New global `Facility` filter** in the header, next to `District`, before the date range —

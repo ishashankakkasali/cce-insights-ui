@@ -6,6 +6,7 @@ import { DateRangeFilter } from './components/shared/DateRangeFilter';
 import { DistrictFilter } from './components/shared/DistrictFilter';
 import { FacilityFilter } from './components/shared/FacilityFilter';
 import { authEnabled, logout } from './auth/keycloak';
+import mohLogo from './assets/rwanda-moh-logo-full.png';
 
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ComplianceOverview = lazy(() => import('./pages/ComplianceOverview'));
@@ -25,21 +26,30 @@ export function App() {
     <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="ml-56 flex-1">
-        <header className="sticky top-0 z-20 flex items-center justify-end gap-4 border-b border-gray-200 bg-white px-6 py-2.5">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-4 bg-[#1d5fae] px-6 py-2.5">
+          <div className="flex items-center gap-3">
+            <img src={mohLogo} alt="Republic of Rwanda — Ministry of Health" className="h-9 w-9 rounded-full bg-white object-contain p-0.5" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-xs text-blue-100">Republic of Rwanda</span>
+              <span className="text-base font-bold text-white">Care Coordination Engine</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
           <DistrictFilter />
           <FacilityFilter />
           <DateRangeFilter />
           {authEnabled && (
-            <div className="flex items-center gap-3 border-l border-gray-200 pl-4">
+            <div className="flex items-center gap-3 border-l border-blue-400/50 pl-4">
               <button
                 type="button"
                 onClick={() => logout()}
-                className="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-md border border-white/40 px-3 py-1 text-sm text-white hover:bg-white/10"
               >
                 Sign out
               </button>
             </div>
           )}
+          </div>
         </header>
         <main className="p-6">
           <Suspense fallback={<LoadingSpinner />}>

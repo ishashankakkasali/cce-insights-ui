@@ -2,16 +2,26 @@
 
 > **CCE Insights UI** — Page-by-page design reference with ASCII wireframes  
 > Each page maps to one or more Insights Service API endpoints. Compliance categories are binary: **Compliant** (`on_track`) and **Non-Compliant** (`non_compliant`).
-> Default date range: **90 days** (`VITE_DEFAULT_DATE_RANGE_DAYS`). The global header is a **District**
-> + **Facility** dropdown pair, then a **From / To** date-picker pair (`DistrictFilter` +
-> `FacilityFilter` + `DateRangeFilter`). The sidebar links to 7 pages: Dashboard, Facilities,
-> Compliance, Deviations, Patients, Events, Ingestion — all 7 render the same District + Facility +
-> date-range header. (Adoption, Practitioners, Intelligence, and Exports are URL-only / removed —
-> not in the nav.)
+> Default date range: **90 days** (`VITE_DEFAULT_DATE_RANGE_DAYS`). The global header (RI-67: a blue
+> government-style bar carrying the Rwanda MoH seal + "Republic of Rwanda" / "Care Coordination
+> Engine") holds a **District** + **Facility** dropdown pair, then a **From / To** date-picker pair
+> (`DistrictFilter` + `FacilityFilter` + `DateRangeFilter`). The sidebar links to 7 pages: Dashboard,
+> Facilities, Compliance, Deviations, Patients, Events, Ingestion — all 7 render the same branded
+> header. (Adoption, Practitioners, Intelligence, and Exports are URL-only / removed — not in the
+> nav.)
 
 ---
 
 ## 0. Recent changes & global filters
+
+**MoH branding (RI-67).** The global header's background changed from plain white to `#1d5fae`
+(the same blue used on the Keycloak login page, RI-66), with the Rwanda MoH seal and "Republic of
+Rwanda" / "Care Coordination Engine" added on the left — same seal reused in the sidebar's home
+link, above "CCE Insights" / "MOH Digital Health". `DistrictFilter`/`FacilityFilter`/
+`DateRangeFilter` labels changed from gray to a light blue tint for contrast against the new
+background, and their `<select>`/`<input type="date">` elements got an explicit white background
+(previously implicit/browser-default, which read as a translucent tint once the header stopped
+being white).
 
 **Global District + Facility filters (RI-56).** The header carries `District` (`DistrictFilter`,
 options from `GET /lookups/districts`) and `Facility` (`FacilityFilter`, options from
