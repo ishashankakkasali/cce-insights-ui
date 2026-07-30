@@ -210,9 +210,12 @@ full Keycloak + gateway deployment procedure.
 
 ```
 App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
-├── Sidebar (flat nav list — 7 links)
-├── Header (global DistrictFilter + FacilityFilter + DateRangeFilter + Sign-out button when
-│           authEnabled — RI-56: District/Facility render on every page, no exceptions)
+├── Sidebar (MoH seal + "CCE Insights" / "MOH Digital Health" branding block, RI-67 — above a
+│            flat nav list of 7 links)
+├── Header (RI-67: blue government-style bar — MoH seal + "Republic of Rwanda" / "Care
+│           Coordination Engine" on the left — carrying the global DistrictFilter + FacilityFilter
+│           + DateRangeFilter + Sign-out button when authEnabled — RI-56: District/Facility render
+│           on every page, no exceptions)
 ├── <Routes> (inline; pages are React.lazy + Suspense)
 │
 ├── / → DashboardPage    (RI-38: high-level NATIONAL indicators only — each KpiCard links to its section)
@@ -447,6 +450,8 @@ in the Docker image) wraps the app in `src/main.tsx`. `App.tsx` declares the rou
 ```
 
 ### Sidebar Navigation
+
+Above the nav list, the sidebar's home link (RI-67) carries the Rwanda MoH seal (`src/assets/rwanda-moh-logo-full.png`) plus two-line branding text — "CCE Insights" (bold, `#1d5fae`) over "MOH Digital Health" (small, gray). This block is a fixed `72px` tall to intentionally *not* align with the global header's own bottom border (their border-bottom lines used to land at the same height and visually merge into one continuous line — a mock-up mismatch caught during RI-67 review).
 
 The sidebar uses a flat navigation list (no groups) with **7 links** in this order:
 

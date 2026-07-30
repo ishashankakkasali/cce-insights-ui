@@ -7,6 +7,7 @@ import {
   BuildingOffice2Icon,
   CogIcon,
 } from '@heroicons/react/24/outline';
+import mohLogo from '../../assets/rwanda-moh-logo-full.png';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: ChartBarIcon },
@@ -23,13 +24,14 @@ export function Sidebar() {
     <aside className="fixed inset-y-0 left-0 z-30 flex w-56 flex-col border-r border-gray-200 bg-white">
       <Link
         to="/"
-        className="flex h-14 items-center gap-2 border-b border-gray-100 px-4 transition-colors hover:bg-gray-50"
+        className="flex h-[72px] items-center gap-2 border-b border-gray-100 px-4 transition-colors hover:bg-gray-50"
         aria-label="CCE Insights home"
       >
-        <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
-          <span className="text-xs font-bold text-white">C</span>
+        <img src={mohLogo} alt="Republic of Rwanda — Ministry of Health" className="h-8 w-8 object-contain" />
+        <div className="flex flex-col leading-tight">
+          <span className="text-sm font-bold text-[#1d5fae]">CCE Insights</span>
+          <span className="text-[11px] text-gray-500">MOH Digital Health</span>
         </div>
-        <span className="text-sm font-bold text-gray-900">CCE Insights</span>
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-2 py-3">

@@ -185,6 +185,7 @@ cce-insights-ui/
 │   │   └── protocols.ts        # Step analytics, funnel, outcomes, enrollment
 │   ├── auth/
 │   │   └── keycloak.ts         # Keycloak OIDC init (PKCE), auto-refresh token
+│   ├── assets/                 # Static images (RI-67: rwanda-moh-logo-full.png), imported via ESM
 │   ├── components/
 │   │   ├── layout/             # Sidebar
 │   │   ├── shared/             # Card, MetricCard, StatusBadge, PageHeader, ErrorAlert,

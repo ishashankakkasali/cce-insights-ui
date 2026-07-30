@@ -37,11 +37,11 @@ export function FacilityFilter() {
 
   return (
     <div className="flex items-center gap-2">
-      <label className="text-xs font-medium text-gray-500">Facility</label>
+      <label className="text-xs font-medium text-blue-100">Facility</label>
       <select
         value={facilityId || ''}
         onChange={(e) => setFacilityId(e.target.value || undefined)}
-        className="w-48 truncate rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+        className="w-48 truncate rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       >
         <option value="">All Facilities</option>
         {facilityOptions.map((f) => (
