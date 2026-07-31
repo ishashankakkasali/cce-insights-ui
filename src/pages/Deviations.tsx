@@ -8,7 +8,9 @@ import { Card } from '../components/shared/Card';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { DeviationTrendChart } from '../components/charts/DeviationTrendChart';
-import { useDeviationKpis, useDeviationTrends, useDeviationsByAction } from '../hooks/useDeviations';
+import { DeviationsByFacilityChart, type DeviationTypeFilter } from '../components/charts/DeviationsByFacilityChart';
+import { TableRangePagination } from '../components/shared/TableRangePagination';
+import { useDeviationKpis, useDeviationTrends, useDeviationsByAction, useDeviationsByFacility } from '../hooks/useDeviations';
 import { useActionOrder } from '../hooks/useProtocols';
 import { useGlobalFilters } from '../hooks/useGlobalFilters';
 import { useFacilityLookup } from '../hooks/useLookups';
@@ -31,19 +33,27 @@ export default function Deviations() {
   const protocolId = searchParams.get('protocol') ?? '';
   const setProtocolId = (v: string) => setParam('protocol', v);
   const rawType = searchParams.get('type') ?? '';
-  const deviationType = ['OVERDUE', 'MISSED', 'ORDER_VIOLATION'].includes(rawType) ? rawType : '';
-  const setDeviationType = (v: string) => setParam('type', v);
+  const deviationType = (['OVERDUE', 'MISSED', 'ORDER_VIOLATION'].includes(rawType) ? rawType : '') as DeviationTypeFilter;
+  // Shared by the KPI tiles, the Deviation List's own pill row, AND the "Deviations by Facility
+  // and Type" chart's pill row below — clicking any of the three updates all three sections
+  // together, same URL-synced param.
+  const setDeviationType = (v: string) => { setParam('type', v); setPage(1); setByFacilityPage(1); };
   const [interval, setInterval] = useState('weekly');
   const [page, setPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const PAGE_SIZE = 20;
+  // RI-34 — "Deviations by Facility and Type" chart's own pagination (independent of the
+  // Deviation List's below — different section, different page state — but shares deviationType).
+  const [byFacilityPage, setByFacilityPage] = useState(1);
+  const BY_FACILITY_PAGE_SIZE = 10;
   const filters = useGlobalFilters();
 
   const protocolFilter = protocolId || undefined;
   const deviationKpis = useDeviationKpis(protocolFilter);
   const trends = useDeviationTrends(interval, protocolFilter);
   const byAction = useDeviationsByAction(protocolFilter);
+  const byFacility = useDeviationsByFacility(byFacilityPage, BY_FACILITY_PAGE_SIZE, deviationType || undefined, protocolFilter);
   const actionOrder = useActionOrder(protocolId);
   const facilities = useFacilityLookup();
 
@@ -114,10 +124,10 @@ export default function Deviations() {
 
       {deviationKpis.isLoading ? <LoadingSpinner /> : deviationKpis.error ? <ErrorAlert error={deviationKpis.error} /> : deviationKpis.data ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <MetricCard title="Total Deviations" value={formatNumber(deviationKpis.data.totalDeviations)} description="Distinct deviations detected during the selected period (counted from the deviation table, no double-counting across snapshot days). Click to clear the Deviation List filter." onClick={() => { setDeviationType(''); setPage(1); }} selected={deviationType === ''} />
-          <MetricCard title="Overdue" value={formatNumber(deviationKpis.data.overdueCount)} description="Steps not completed by the due date and still within the resolution window. Click to filter the Deviation List." bgColor="bg-amber-50" onClick={() => { setDeviationType('OVERDUE'); setPage(1); }} selected={deviationType === 'OVERDUE'} />
-          <MetricCard title="Missed" value={formatNumber(deviationKpis.data.missedCount)} description="Steps that passed the maximum resolution window — now permanently missed. Click to filter the Deviation List." bgColor="bg-red-50" onClick={() => { setDeviationType('MISSED'); setPage(1); }} selected={deviationType === 'MISSED'} />
-          <MetricCard title="Order Violation" value={formatNumber(deviationKpis.data.orderViolationCount)} description="Steps completed out of the expected sequence order defined in the protocol. Click to filter the Deviation List." bgColor="bg-purple-50" onClick={() => { setDeviationType('ORDER_VIOLATION'); setPage(1); }} selected={deviationType === 'ORDER_VIOLATION'} />
+          <MetricCard title="Total Deviations" value={formatNumber(deviationKpis.data.totalDeviations)} description="Distinct deviations detected during the selected period (counted from the deviation table, no double-counting across snapshot days). Click to clear the Deviation List filter." onClick={() => setDeviationType('')} selected={deviationType === ''} />
+          <MetricCard title="Overdue" value={formatNumber(deviationKpis.data.overdueCount)} description="Steps not completed by the due date and still within the resolution window. Click to filter the Deviation List." bgColor="bg-amber-50" onClick={() => setDeviationType('OVERDUE')} selected={deviationType === 'OVERDUE'} />
+          <MetricCard title="Missed" value={formatNumber(deviationKpis.data.missedCount)} description="Steps that passed the maximum resolution window — now permanently missed. Click to filter the Deviation List." bgColor="bg-red-50" onClick={() => setDeviationType('MISSED')} selected={deviationType === 'MISSED'} />
+          <MetricCard title="Order Violation" value={formatNumber(deviationKpis.data.orderViolationCount)} description="Steps completed out of the expected sequence order defined in the protocol. Click to filter the Deviation List." bgColor="bg-purple-50" onClick={() => setDeviationType('ORDER_VIOLATION')} selected={deviationType === 'ORDER_VIOLATION'} />
         </div>
       ) : null}
 
@@ -142,6 +152,55 @@ export default function Deviations() {
       >
         {trends.isLoading ? <LoadingSpinner /> : trends.data ? (
           <DeviationTrendChart data={trends.data.trends} />
+        ) : null}
+      </Card>
+
+      <Card
+        title="Deviations by Facility and Type"
+        description="Facilities ranked by deviation count for the selected period. Select a type to re-rank by that type instead of the total."
+        className="mt-6"
+        action={
+          <div className="flex gap-1">
+            {([
+              { value: '', label: 'All Types' },
+              { value: 'OVERDUE', label: 'Overdue' },
+              { value: 'MISSED', label: 'Missed' },
+              { value: 'ORDER_VIOLATION', label: 'Order Violation' },
+            ] as { value: DeviationTypeFilter; label: string }[]).map((t) => (
+              <button
+                key={t.value}
+                onClick={() => setDeviationType(t.value)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  deviationType === t.value
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        }
+      >
+        {byFacility.isLoading ? <LoadingSpinner /> : byFacility.error ? <ErrorAlert error={byFacility.error} /> : byFacility.data ? (
+          byFacility.data.data.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-500">No deviations in the selected period.</p>
+          ) : (
+            <>
+              <DeviationsByFacilityChart
+                data={byFacility.data.data}
+                getFacilityName={getFacilityName}
+                selectedType={deviationType}
+                height={Math.max(120, byFacility.data.data.length * 36)}
+              />
+              <TableRangePagination
+                page={byFacilityPage}
+                pageSize={BY_FACILITY_PAGE_SIZE}
+                totalCount={byFacility.data.pagination.total_count ?? byFacility.data.data.length}
+                onPageChange={setByFacilityPage}
+              />
+            </>
+          )
         ) : null}
       </Card>
 
@@ -182,7 +241,7 @@ export default function Deviations() {
             {[{ value: '', label: 'All Types' }, { value: 'OVERDUE', label: 'Overdue' }, { value: 'MISSED', label: 'Missed' }, { value: 'ORDER_VIOLATION', label: 'Order Violation' }].map((t) => (
               <button
                 key={t.value}
-                onClick={() => { setDeviationType(t.value); setPage(1); }}
+                onClick={() => setDeviationType(t.value)}
                 className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                   deviationType === t.value
                     ? 'bg-blue-600 text-white'

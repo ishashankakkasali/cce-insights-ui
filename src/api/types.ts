@@ -283,6 +283,15 @@ export interface DeviationByAction {
   affectedPatients: number;
 }
 
+// RI-34 — "Deviations by Facility and Type" chart (Deviations page).
+export interface DeviationByFacility {
+  facilityId: string;
+  overdueCount: number;
+  missedCount: number;
+  orderViolationCount: number;
+  totalDeviations: number;
+}
+
 export interface DeviationResolution {
   totalOverdueDeviations: number;
   resolved: {
