@@ -254,6 +254,8 @@ App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 │   ├── ProtocolFilter
 │   ├── KPI cards × 4 (Total, Overdue, Missed, Order Violation)
 │   ├── DeviationTrendChart (area)
+│   ├── DeviationsByFacilityChart (RI-34 — stacked horizontal bar, ranked, paginated; type
+│   │        toggle shares state with the KPI cards and the Deviation List's toggle below)
 │   ├── Most Deviated Steps table (Total / Overdue / Missed / Order Violation)
 │   └── Deviation List (type pills + patient search, page pagination)
 │
@@ -400,6 +402,7 @@ useQuery({
 ['deviations', 'kpis', { protocolDefinitionId, ...filters }]
 ['deviations', 'trends', { interval, protocolDefinitionId, ...filters }]
 ['deviations', 'by-action', { protocolDefinitionId, deviationType, facilityId }]
+['deviations', 'by-facility', { page, pageSize, deviationType, protocolDefinitionId, ...filters }]
 ['deviations', 'intelligence-summary', filters]
 ['intelligence', 'summary', { ...filters, protocolDefinitionId }]
 ['events', 'summary', { facilityId, source, startDate, endDate }]

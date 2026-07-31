@@ -4,6 +4,28 @@
 
 ## Unreleased
 
+### Deviations by Facility and Type (RI-34)
+
+- **New chart on the Deviations page**, positioned between "Deviation Trends" and "Most Deviated
+  Steps": a stacked horizontal bar chart ranking facilities by deviation count, broken down into
+  Overdue/Missed/Order Violation (`DeviationsByFacilityChart`, `src/components/charts/`), backed
+  by the new `GET /deviations/by-facility` endpoint. Each bar shows a value label inside every
+  non-zero segment and the running total at the bar's end.
+- **Paginated, not a fixed "top 10"** — scoped by the page's existing global District/Facility
+  filters: all facilities (paginated, page size 10) when neither is set, every facility in the
+  selected district when only District is set, exactly one bar when a specific Facility is set.
+- **Type toggle shares state with the KPI tiles and the Deviation List's own toggle** — one
+  URL-synced `type` param drives all three; clicking any of them updates all three sections
+  together. Selecting a single type re-ranks the chart by that type's count (via the endpoint's
+  `deviationType` param) rather than just recoloring the existing total-ranked order.
+- **Bug fix — `ProtocolFilter` "All Protocols" unselectable once a protocol was already set:**
+  the auto-default-to-first-protocol effect only marked itself "done" at the moment it actually
+  fired a default. If the page loaded with a protocol already selected (the common case), the
+  guard never got marked, so the very next manual selection of "All Protocols" (clearing the
+  value) was treated as the first opportunity to default and was immediately overwritten back to
+  the first protocol — "All Protocols" could never actually be chosen. Fixed by resolving the
+  guard the first time protocol data loads, regardless of whether a default was actually needed.
+
 ### MoH Branding — Logo + Government Header (RI-67)
 
 - **Sidebar:** the placeholder blue "C" square is replaced with the official Rwanda MoH seal,
