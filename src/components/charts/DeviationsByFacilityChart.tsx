@@ -53,15 +53,19 @@ const TYPE_META: Record<Exclude<DeviationTypeFilter, ''>, { dataKey: keyof Devia
 
 export function DeviationsByFacilityChart({ data, getFacilityName, selectedType, height = 320 }: DeviationsByFacilityChartProps) {
   const chartData = data.map((d) => ({ ...d, facilityName: getFacilityName(d.facilityId) }));
-  // Facility Y-axis labels need enough left margin for the longest name; Recharts doesn't
-  // auto-size this, so scale roughly with name length (same approach ResourceTypeBarChart uses
-  // a fixed value for, but facility names run much longer than resource types).
+  // Facility Y-axis labels need enough width for the longest name; Recharts doesn't auto-size
+  // this, so scale roughly with name length (same approach ResourceTypeBarChart uses a fixed
+  // value for, but facility names run much longer than resource types). This is the ONLY place
+  // that reserves left-hand space — the chart's own `margin.left` stays a small fixed gap, not
+  // a second scaling term, which used to double-count and blow out the gap for long names (e.g.
+  // "Kacyiru District Hospital (0022)" produced ~300px of dead space before the bars even
+  // started).
   const yAxisWidth = Math.min(220, Math.max(100, ...chartData.map((d) => d.facilityName.length * 6)));
 
   return (
     <div>
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={chartData} layout="vertical" margin={{ left: yAxisWidth - 100, right: 32, bottom: 28 }}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: 8, right: 32, bottom: 28 }}>
           <XAxis
             type="number"
             tick={{ fontSize: 11 }}
