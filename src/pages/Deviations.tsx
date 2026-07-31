@@ -157,7 +157,8 @@ export default function Deviations() {
 
       <Card
         title="Deviations by Facility and Type"
-        description="Facilities ranked by deviation count for the selected period. Select a type to re-rank by that type instead of the total."
+        subtitle="Facilities ranked by total deviations (highest to lowest)"
+        description="Select a type to re-rank by that type instead of the total."
         className="mt-6"
         action={
           <div className="flex gap-1">
@@ -191,7 +192,7 @@ export default function Deviations() {
                 data={byFacility.data.data}
                 getFacilityName={getFacilityName}
                 selectedType={deviationType}
-                height={Math.max(120, byFacility.data.data.length * 36)}
+                height={Math.max(190, byFacility.data.data.length * 36 + 70)}
               />
               <TableRangePagination
                 page={byFacilityPage}

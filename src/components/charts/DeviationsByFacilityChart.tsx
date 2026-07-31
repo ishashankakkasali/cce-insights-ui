@@ -59,33 +59,47 @@ export function DeviationsByFacilityChart({ data, getFacilityName, selectedType,
   const yAxisWidth = Math.min(220, Math.max(100, ...chartData.map((d) => d.facilityName.length * 6)));
 
   return (
-    <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={chartData} layout="vertical" margin={{ left: yAxisWidth - 100, right: 32 }}>
-        <XAxis type="number" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
-        <YAxis type="category" dataKey="facilityName" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={yAxisWidth} />
-        <Tooltip formatter={(value: number) => value.toLocaleString()} />
-        <Legend />
-        {selectedType === '' ? (
-          <>
-            <Bar dataKey="overdueCount" stackId="deviations" fill={CHART_COLORS.warning} name="Overdue" radius={[0, 0, 0, 0]}>
-              <LabelList dataKey="overdueCount" content={segmentLabel} />
+    <div>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={chartData} layout="vertical" margin={{ left: yAxisWidth - 100, right: 32, bottom: 28 }}>
+          <XAxis
+            type="number"
+            tick={{ fontSize: 11 }}
+            tickLine={false}
+            axisLine={false}
+            allowDecimals={false}
+            label={{ value: 'Number of deviations', position: 'insideBottom', offset: -8, fontSize: 12, fill: '#6b7280' }}
+          />
+          <YAxis type="category" dataKey="facilityName" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={yAxisWidth} />
+          <Tooltip formatter={(value: number) => value.toLocaleString()} />
+          {/* Below the axis label (extra bottom margin above makes room), matching the rest of
+              the page's charts (e.g. Deviation Trends), which all keep their legend at the bottom. */}
+          <Legend verticalAlign="bottom" wrapperStyle={{ paddingTop: 16 }} />
+          {selectedType === '' ? (
+            <>
+              <Bar dataKey="overdueCount" stackId="deviations" fill={CHART_COLORS.warning} name="Overdue" radius={[0, 0, 0, 0]}>
+                <LabelList dataKey="overdueCount" content={segmentLabel} />
+              </Bar>
+              <Bar dataKey="missedCount" stackId="deviations" fill={CHART_COLORS.danger} name="Missed" radius={[0, 0, 0, 0]}>
+                <LabelList dataKey="missedCount" content={segmentLabel} />
+              </Bar>
+              <Bar dataKey="orderViolationCount" stackId="deviations" fill={CHART_COLORS.orderViolation} name="Order Violation" radius={[0, 4, 4, 0]}>
+                <LabelList dataKey="orderViolationCount" content={segmentLabel} />
+                <LabelList valueAccessor={(entry: { payload?: DeviationByFacility }) => entry?.payload?.totalDeviations} content={totalLabel} />
+              </Bar>
+            </>
+          ) : (
+            // Single type selected: no separate "total" annotation needed — the segment's own
+            // inline value label already is the total for that view (nothing else stacked on it).
+            <Bar dataKey={TYPE_META[selectedType].dataKey} fill={TYPE_META[selectedType].color} name={TYPE_META[selectedType].name} radius={[0, 4, 4, 0]}>
+              <LabelList dataKey={TYPE_META[selectedType].dataKey} content={segmentLabel} />
             </Bar>
-            <Bar dataKey="missedCount" stackId="deviations" fill={CHART_COLORS.danger} name="Missed" radius={[0, 0, 0, 0]}>
-              <LabelList dataKey="missedCount" content={segmentLabel} />
-            </Bar>
-            <Bar dataKey="orderViolationCount" stackId="deviations" fill={CHART_COLORS.orderViolation} name="Order Violation" radius={[0, 4, 4, 0]}>
-              <LabelList dataKey="orderViolationCount" content={segmentLabel} />
-              <LabelList valueAccessor={(entry: { payload?: DeviationByFacility }) => entry?.payload?.totalDeviations} content={totalLabel} />
-            </Bar>
-          </>
-        ) : (
-          // Single type selected: no separate "total" annotation needed — the segment's own
-          // inline value label already is the total for that view (nothing else stacked on it).
-          <Bar dataKey={TYPE_META[selectedType].dataKey} fill={TYPE_META[selectedType].color} name={TYPE_META[selectedType].name} radius={[0, 4, 4, 0]}>
-            <LabelList dataKey={TYPE_META[selectedType].dataKey} content={segmentLabel} />
-          </Bar>
-        )}
-      </BarChart>
-    </ResponsiveContainer>
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+      {selectedType === '' && (
+        <p className="mt-1 text-xs text-gray-400">Total deviations = Missed + Overdue + Order Violation</p>
+      )}
+    </div>
   );
 }
