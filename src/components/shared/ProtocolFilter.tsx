@@ -9,13 +9,16 @@ interface ProtocolFilterProps {
 export function ProtocolFilter({ value, onChange }: ProtocolFilterProps) {
   const protocols = useProtocols();
 
-  // Default to the first protocol on initial load ONLY. Runs once — otherwise selecting
-  // "All Protocols" (value = '') would be immediately overwritten back to the first protocol
-  // and could never be chosen.
+  // Default to the first protocol on initial load ONLY. Resolves (one way or the other) the
+  // first time protocols.data becomes available, then never runs again — otherwise, if the page
+  // loaded with a protocol already selected, this stayed "unused" and would fire the very next
+  // time the user manually picked "All Protocols" (value = ''), immediately overwriting it back
+  // to the first protocol and making "All Protocols" impossible to select.
   const didDefault = useRef(false);
   useEffect(() => {
-    if (!didDefault.current && !value && protocols.data && protocols.data.length > 0) {
-      didDefault.current = true;
+    if (didDefault.current || !protocols.data) return;
+    didDefault.current = true;
+    if (!value && protocols.data.length > 0) {
       onChange(protocols.data[0].id);
     }
   }, [protocols.data, value, onChange]);

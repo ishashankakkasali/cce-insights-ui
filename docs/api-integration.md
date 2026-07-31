@@ -815,7 +815,7 @@ export function getPatientIntelligenceDeliveries(
 // src/api/deviations.ts
 import { apiGet, apiGetPaginated } from './client';
 import type {
-  DeviationRecord, DeviationTrend, DeviationByAction,
+  DeviationRecord, DeviationTrend, DeviationByAction, DeviationByFacility,
   DeviationResolution, DeviationKpis, IntelligenceSummary,
 } from './types';
 
@@ -887,6 +887,29 @@ export function getDeviationsByAction(params?: {
     startDate: params?.startDate,
     endDate: params?.endDate,
     limit: params?.limit?.toString(),
+  });
+}
+
+// RI-34 — "Deviations by Facility and Type" chart (Deviations page).
+export function getDeviationsByFacility(params?: {
+  facilityId?: string;
+  district?: string;
+  protocolDefinitionId?: string;
+  startDate?: string;
+  endDate?: string;
+  deviationType?: string;
+  limit?: number;
+  cursor?: string;
+}) {
+  return apiGetPaginated<DeviationByFacility>('/deviations/by-facility', {
+    facilityId: params?.facilityId,
+    district: params?.district,
+    protocolDefinitionId: params?.protocolDefinitionId,
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+    deviationType: params?.deviationType,
+    limit: params?.limit?.toString(),
+    cursor: params?.cursor,
   });
 }
 

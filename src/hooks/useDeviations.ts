@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  getDeviationTrends, getDeviationsByAction,
+  getDeviationTrends, getDeviationsByAction, getDeviationsByFacility,
   getDeviationResolutionRate, getIntelligenceSummary, getDeviationKpis,
 } from '../api/deviations';
 import { useGlobalFilters } from './useGlobalFilters';
@@ -34,6 +34,25 @@ export function useDeviationsByAction(protocolDefinitionId?: string) {
   return useQuery({
     queryKey: ['deviations', 'by-action', { protocolDefinitionId, ...filters }],
     queryFn: () => getDeviationsByAction({ protocolDefinitionId, ...filters }),
+  });
+}
+
+// RI-34 — "Deviations by Facility and Type" chart. Page-based on top of the API's cursor
+// pagination (cursor is just a stringified offset), matching TableRangePagination's contract.
+// deviationType, when set, both filters nothing (the endpoint still returns all 3 counts per
+// facility) and re-ranks the page by that type's count instead of the total — matches the
+// chart's type-filter toggle.
+export function useDeviationsByFacility(page: number, pageSize: number, deviationType?: string, protocolDefinitionId?: string) {
+  const filters = useGlobalFilters();
+  return useQuery({
+    queryKey: ['deviations', 'by-facility', { page, pageSize, deviationType, protocolDefinitionId, ...filters }],
+    queryFn: () => getDeviationsByFacility({
+      ...filters,
+      deviationType,
+      protocolDefinitionId,
+      limit: pageSize,
+      cursor: String((page - 1) * pageSize),
+    }),
   });
 }
 

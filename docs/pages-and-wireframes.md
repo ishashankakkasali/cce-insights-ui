@@ -435,6 +435,7 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 |----------|---------|
 | `GET /v1/insights/deviations/kpis` | KPI cards (total / overdue / missed / order-violation counts) |
 | `GET /v1/insights/deviations/trends` | Time-bucketed deviation trends |
+| `GET /v1/insights/deviations/by-facility` | **RI-34** — facilities ranked by deviation count, by type (chart) |
 | `GET /v1/insights/deviations/by-action` | Most-deviated protocol steps |
 | `GET /v1/insights/deviations` | Paginated deviation list |
 
@@ -454,6 +455,14 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 │         │  ┌─ Deviation Trends ────────────────────────────────────────────┐ │
 │         │  │ Interval: [Daily] [Weekly •] [Monthly]                       │ │
 │         │  │    ■ Overdue   ▒ Missed   ▓ Order Violation                  │ │
+│         │  └───────────────────────────────────────────────────────────────┘ │
+│         │                                                                    │
+│         │  ┌─ Deviations by Facility and Type ─────────────────────────────┐ │
+│         │  │ [All Types] [Overdue] [Missed] [Order Violation]              │ │
+│         │  │ ■ Overdue  ▒ Missed  ▓ Order Violation                        │ │
+│         │  │ Facility A  ▓▓▓▓▓▓░░░░▒▒▒▒            18                     │ │
+│         │  │ Facility B  ▓▓▓▓░░░░░░▒▒              11                     │ │
+│         │  │                          ◀ 1-10 of 24 ▶                      │ │
 │         │  └───────────────────────────────────────────────────────────────┘ │
 │         │                                                                    │
 │         │  ┌─ Most Deviated Steps ─────────────────────────────────────────┐ │
@@ -477,6 +486,17 @@ Deviations have **three types**: `OVERDUE`, `MISSED`, `ORDER_VIOLATION`.
 > **RI-48:** in the Deviation List, the **Facility** column shows `Name (id)` when two or more
 > facilities share the same name (same disambiguation as the Facility Ranking table); a unique
 > name is shown plain.
+
+> **RI-34 — Deviations by Facility and Type.** Stacked horizontal bar chart, one bar per facility,
+> ranked by total deviations desc (or by a single type's count when that type is selected — see
+> below). Paginated (`TableRangePagination`, page size 10) rather than a fixed "top 10" — scoped
+> entirely by the page's existing global District/Facility filters: all facilities paginated when
+> neither is set, every facility in the selected district when only District is set, exactly one
+> bar when a specific Facility is set. The `[All Types] [Overdue] [Missed] [Order Violation]`
+> toggle **shares state** with the KPI tiles above and the Deviation List's own identical toggle
+> below — clicking any of the three updates all three sections together (one URL-synced `type`
+> param). Selecting a single type re-ranks the page by that type's count via the endpoint's
+> `deviationType` param, rather than just recoloring/filtering the existing total-ranked order.
 
 ---
 
