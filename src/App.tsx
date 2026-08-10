@@ -28,7 +28,7 @@ export function App() {
       <div className="ml-56 flex-1">
         <header className="sticky top-0 z-20 flex items-center justify-between gap-4 bg-[#1d5fae] px-6 py-2.5">
           <div className="flex items-center gap-3">
-            <img src={mohLogo} alt="Republic of Rwanda — Ministry of Health" className="h-11 w-11 object-contain" />
+            <img src={mohLogo} alt="Republic of Rwanda — Ministry of Health" className="h-14 w-14 object-contain" />
             <div className="flex flex-col leading-tight">
               <span className="text-base font-bold text-white">Republic of Rwanda</span>
               <span className="text-xs text-blue-100">Ministry of Health</span>
