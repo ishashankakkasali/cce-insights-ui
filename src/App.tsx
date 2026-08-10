@@ -32,6 +32,7 @@ export function App() {
             <div className="flex flex-col leading-tight">
               <span className="text-base font-bold text-white">Republic of Rwanda</span>
               <span className="text-xs text-blue-100">Ministry of Health</span>
+              <span className="text-xs text-blue-100">Care Coordination Engine</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
