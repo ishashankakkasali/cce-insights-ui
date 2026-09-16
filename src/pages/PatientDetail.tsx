@@ -79,19 +79,19 @@ function ReferralTable({ title, steps, emptyLabel }: { title: string; steps: Jou
   return (
     <div>
       <p className="mb-1 text-[11px] font-medium uppercase text-gray-400">{title}</p>
-      {steps.length > 0 ? (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                <th className="pb-2 pr-4">Step</th>
-                <th className="pb-2 pr-4">Source</th>
-                <th className="pb-2 pr-4">Facility</th>
-                <th className="pb-2">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {steps.map((step, idx) => (
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+              <th className="pb-2 pr-4">Step</th>
+              <th className="pb-2 pr-4">Source</th>
+              <th className="pb-2 pr-4">Facility</th>
+              <th className="pb-2">Date</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {steps.length > 0 ? (
+              steps.map((step, idx) => (
                 <tr key={`${title}-${idx}`} className="hover:bg-gray-50">
                   <td className="py-2 pr-4 font-medium text-gray-900">{step.stepName}</td>
                   <td className="py-2 pr-4">
@@ -104,13 +104,15 @@ function ReferralTable({ title, steps, emptyLabel }: { title: string; steps: Jou
                   <td className="py-2 pr-4 text-gray-600">{step.facilityName || step.facilityId || '—'}</td>
                   <td className="py-2 text-gray-600">{step.effectiveDateTime ? formatDateTime(step.effectiveDateTime) : '—'}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <p className="py-3 text-center text-xs text-gray-400">{emptyLabel}</p>
-      )}
+              ))
+            ) : (
+              <tr>
+                <td colSpan={4} className="py-3 text-center text-xs text-gray-400">{emptyLabel}</td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -120,23 +122,22 @@ export default function PatientDetail() {
   const [searchParams] = useSearchParams();
   const requestedProtocolInstanceId = searchParams.get('protocolInstanceId');
   const patientId = id ?? '';
-  const [selectedProtocol, setSelectedProtocol] = useState('');
   const [expandedProtocolInstanceId, setExpandedProtocolInstanceId] = useState<string | null>(null);
   const [hasSetDefaultExpansion, setHasSetDefaultExpansion] = useState(false);
+  // Step Details stays collapsed inside a protocol's body until its own
+  // "Details →" link is clicked — expanding the protocol itself shouldn't
+  // also dump the raw step table.
+  const [detailsRequestedFor, setDetailsRequestedFor] = useState<string | null>(null);
 
   const tracking = usePatientProtocolTracking(patientId);
   const timeline = usePatientTimeline(patientId);
   const deviations = usePatientDeviations(patientId, { skipDateFilter: true });
-  const detail = usePatientProtocolTrackingDetail(patientId, selectedProtocol);
+  const detail = usePatientProtocolTrackingDetail(patientId, detailsRequestedFor ?? '');
 
   // Whichever protocol the user came here for (clicked from the Patient
   // List's protocol-filtered table, carried via ?protocolInstanceId=) is
-  // pinned to the top of both lists below so it's immediately visible
-  // instead of buried among the patient's other enrollments.
-  const orderedTracking = useMemo(
-    () => reorderByRequestedProtocol(tracking.data ?? [], requestedProtocolInstanceId),
-    [tracking.data, requestedProtocolInstanceId]
-  );
+  // pinned to the top of the list below so it's immediately visible instead
+  // of buried among the patient's other enrollments.
   const orderedProtocols = useMemo(
     () => reorderByRequestedProtocol(timeline.data?.protocols ?? [], requestedProtocolInstanceId),
     [timeline.data, requestedProtocolInstanceId]
@@ -165,14 +166,6 @@ export default function PatientDetail() {
     setExpandedProtocolInstanceId((prev) => (prev === protocolInstanceId ? null : protocolInstanceId));
   }
 
-  // Used by the "Details →" link on the Protocol Tracking card above: expand
-  // that protocol's journey below (collapsing whichever was open), without
-  // scrolling — the Step Details table opens above and scrolling down would
-  // just hide it again.
-  function focusProtocolJourney(protocolInstanceId: string) {
-    setExpandedProtocolInstanceId(protocolInstanceId);
-  }
-
   // Build set of actionIds that have deviations (incomplete prerequisites from ORDER_VIOLATION)
   const deviationActionIds = new Set<string>();
   if (deviations.data) {
@@ -196,105 +189,7 @@ export default function PatientDetail() {
       </div>
       <PageHeader title={`Patient: ${patientId}`} />
 
-      <Card title="Protocol Tracking">
-        {tracking.isLoading && <LoadingSpinner />}
-        {tracking.error && <ErrorAlert error={tracking.error} />}
-        {tracking.data && tracking.data.length === 0 && (
-          <p className="py-4 text-center text-sm text-gray-400">No protocol tracking found.</p>
-        )}
-        {tracking.data && (
-          <div className="space-y-3">
-            {orderedTracking.map((p) => {
-              const docArtifact = p.relatedArtifact?.find((a) => a.type === 'documentation');
-              const thumbnailUrl = docArtifact?.extension?.find((e) => e.url === 'http://openphc.org/fhir/thumbnail')?.valueCode;
-              const displayTitle = p.protocolTitle || p.protocolCanonical;
-              return (
-                <div key={p.protocolInstanceId} className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-3">
-                      {thumbnailUrl && (
-                        <a href={docArtifact?.url} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-                          <img
-                            src={toDirectImageUrl(thumbnailUrl)}
-                            alt={docArtifact?.display || 'Protocol thumbnail'}
-                            className="h-10 w-10 rounded object-cover border border-gray-200"
-                          />
-                        </a>
-                      )}
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <StatusBadge
-                            label={p.status}
-                            color={STATUS_COLORS[p.status as ProtocolInstanceStatus] ?? { bg: 'bg-gray-100', text: 'text-gray-700' }}
-                          />
-                          {docArtifact ? (
-                            <a href={docArtifact.url} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-blue-700 hover:underline">
-                              {displayTitle}
-                            </a>
-                          ) : (
-                            <span className="text-sm font-semibold text-gray-900">{displayTitle}</span>
-                          )}
-                        </div>
-                        <p className="mt-1 text-xs text-gray-500">
-                          Tracking Since: {formatDate(p.enrolledAt)} · Rate: {formatPercentage(p.complianceRate)} · Steps: {p.stepsCompleted}/{p.totalSteps}
-                        </p>
-                        <div className="mt-2 h-1.5 w-48 overflow-hidden rounded-full bg-gray-200">
-                          <div
-                            className="h-full rounded-full bg-blue-500"
-                            style={{ width: `${(p.stepsCompleted / Math.max(p.totalSteps, 1)) * 100}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedProtocol(p.protocolInstanceId);
-                        focusProtocolJourney(p.protocolInstanceId);
-                      }}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-700"
-                    >
-                      Details →
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      {selectedProtocol && detail.data && (
-        <Card title={`Step Details — ${detail.data.protocolCanonical}`} className="mt-6">
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
-                  <th className="pb-2 pr-4">Action</th>
-                  <th className="pb-2 pr-4">State</th>
-                  <th className="pb-2 pr-4">Due Date</th>
-                  <th className="pb-2 pr-4">Completed</th>
-                  <th className="pb-2">Source</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {detail.data.steps.map((s) => (
-                  <tr key={s.stepInstanceId} className="hover:bg-gray-50">
-                    <td className="py-2 pr-4 font-medium text-gray-900">{s.actionId}</td>
-                    <td className="py-2 pr-4">
-                      <StatusBadge label={s.state} color={STATE_COLORS[s.state as StepState] ?? { bg: 'bg-gray-100', text: 'text-gray-700' }} />
-                    </td>
-                    <td className="py-2 pr-4 text-gray-600">{s.dueDate ? formatDate(s.dueDate) : '—'}</td>
-                    <td className="py-2 pr-4 text-gray-600">{s.completedAt ? formatDateTime(s.completedAt) : '—'}</td>
-                    <td className="py-2 text-gray-600">{s.completedBySource || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
-
-      <Card title="Protocol Journey" className="mt-6">
+      <Card title="Protocol Journey">
         {isLoading && <LoadingSpinner />}
         {error && <ErrorAlert error={error} />}
         {timeline.data && timeline.data.protocols.length === 0 && (
@@ -338,10 +233,17 @@ export default function PatientDetail() {
 
                 return (
                   <div key={proto.protocolInstanceId} className="rounded-lg border border-gray-200">
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={0}
                       onClick={() => toggleProtocolExpanded(proto.protocolInstanceId)}
-                      className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleProtocolExpanded(proto.protocolInstanceId);
+                        }
+                      }}
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50"
                     >
                       <div className="flex min-w-0 items-center gap-3">
                         <svg
@@ -351,18 +253,38 @@ export default function PatientDetail() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                         </svg>
                         {thumbnailUrl && (
-                          <img
-                            src={toDirectImageUrl(thumbnailUrl)}
-                            alt={docArtifact?.display || 'Protocol thumbnail'}
-                            className="h-8 w-8 flex-shrink-0 rounded object-cover border border-gray-200"
-                          />
+                          <a
+                            href={docArtifact?.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex-shrink-0"
+                          >
+                            <img
+                              src={toDirectImageUrl(thumbnailUrl)}
+                              alt={docArtifact?.display || 'Protocol thumbnail'}
+                              className="h-8 w-8 rounded object-cover border border-gray-200"
+                            />
+                          </a>
                         )}
                         <StatusBadge
                           label={proto.status}
                           color={STATUS_COLORS[proto.status as ProtocolInstanceStatus] ?? { bg: 'bg-gray-100', text: 'text-gray-700' }}
                         />
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+                          {docArtifact ? (
+                            <a
+                              href={docArtifact.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="truncate text-sm font-semibold text-blue-700 hover:underline"
+                            >
+                              {title}
+                            </a>
+                          ) : (
+                            <p className="truncate text-sm font-semibold text-gray-900">{title}</p>
+                          )}
                           <p className="truncate text-xs text-gray-500">
                             {proto.protocolCanonical}
                             {trackingMatch?.enrolledAt && <> · Enrolled: {formatDate(trackingMatch.enrolledAt)}</>}
@@ -380,7 +302,7 @@ export default function PatientDetail() {
                         </span>
                         <span className="text-xs font-medium text-gray-700">{formatPercentage(proto.complianceRate)}</span>
                       </div>
-                    </button>
+                    </div>
 
                     {isExpanded && (
                       <div className="space-y-6 border-t border-gray-200 px-4 py-4">
@@ -464,20 +386,6 @@ export default function PatientDetail() {
                           })}
                         </div>
 
-                        {hasReferralEvents && (
-                          <div className="border-t border-gray-200 pt-4">
-                            <h4 className="mb-2 text-xs font-semibold uppercase text-gray-500">Referral Events</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-gray-200">
-                              <div className="md:pr-4">
-                                <ReferralTable title="Initiated" steps={protoOutbound} emptyLabel="No referral initiated." />
-                              </div>
-                              <div className="mt-4 md:mt-0 md:pl-4">
-                                <ReferralTable title="Closed" steps={protoInbound} emptyLabel="No referral closure." />
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
                         <div className="border-t border-gray-200 pt-4">
                           <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-gray-200">
                             <div className="md:pr-4">
@@ -523,6 +431,73 @@ export default function PatientDetail() {
                               )}
                             </div>
                           </div>
+                        </div>
+
+                        {hasReferralEvents && (
+                          <div className="border-t border-gray-200 pt-4">
+                            <h4 className="mb-2 text-xs font-semibold uppercase text-gray-500">Referral Events</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 md:divide-x md:divide-gray-200">
+                              <div className="md:pr-4">
+                                <ReferralTable title="Initiated" steps={protoOutbound} emptyLabel="No referral initiated." />
+                              </div>
+                              <div className="mt-4 md:mt-0 md:pl-4">
+                                <ReferralTable title="Closed" steps={protoInbound} emptyLabel="No referral closure." />
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="border-t border-gray-200 pt-4">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setDetailsRequestedFor((prev) => (prev === proto.protocolInstanceId ? null : proto.protocolInstanceId))
+                            }
+                            className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-left hover:bg-gray-100"
+                          >
+                            <span className="flex items-center gap-1.5 text-xs font-semibold uppercase text-gray-600">
+                              <svg
+                                className={`h-3.5 w-3.5 flex-shrink-0 text-gray-500 transition-transform ${detailsRequestedFor === proto.protocolInstanceId ? 'rotate-90' : ''}`}
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                              Step Details
+                            </span>
+                            <span className="text-[11px] font-normal normal-case text-gray-400">
+                              {detailsRequestedFor === proto.protocolInstanceId ? 'Hide' : 'Show'} raw step-level data
+                            </span>
+                          </button>
+                          {detailsRequestedFor === proto.protocolInstanceId && detail.isLoading && <div className="mt-2"><LoadingSpinner /></div>}
+                          {detailsRequestedFor === proto.protocolInstanceId && detail.error && <div className="mt-2"><ErrorAlert error={detail.error} /></div>}
+                          {detailsRequestedFor === proto.protocolInstanceId && detail.data && detail.data.protocolInstanceId === proto.protocolInstanceId && (
+                            <div className="mt-2 overflow-x-auto">
+                              <table className="min-w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase text-gray-500">
+                                    <th className="pb-2 pr-4">Action</th>
+                                    <th className="pb-2 pr-4">State</th>
+                                    <th className="pb-2 pr-4">Due Date</th>
+                                    <th className="pb-2 pr-4">Completed</th>
+                                    <th className="pb-2">Source</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {detail.data.steps.map((s) => (
+                                    <tr key={s.stepInstanceId} className="hover:bg-gray-50">
+                                      <td className="py-2 pr-4 font-medium text-gray-900">{s.actionId}</td>
+                                      <td className="py-2 pr-4">
+                                        <StatusBadge label={s.state} color={STATE_COLORS[s.state as StepState] ?? { bg: 'bg-gray-100', text: 'text-gray-700' }} />
+                                      </td>
+                                      <td className="py-2 pr-4 text-gray-600">{s.dueDate ? formatDate(s.dueDate) : '—'}</td>
+                                      <td className="py-2 pr-4 text-gray-600">{s.completedAt ? formatDateTime(s.completedAt) : '—'}</td>
+                                      <td className="py-2 text-gray-600">{s.completedBySource || '—'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
