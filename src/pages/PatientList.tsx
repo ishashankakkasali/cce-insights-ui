@@ -141,7 +141,10 @@ export default function PatientList() {
                   {patients.data.data.map((p) => (
                     <tr key={`${p.patientId}-${p.protocolInstanceId}`} className="hover:bg-gray-50">
                       <td className="py-2 pr-4">
-                        <Link to={`/compliance/patients/${encodeURIComponent(p.patientId)}`} className="font-medium text-blue-600 hover:text-blue-700">
+                        <Link
+                          to={`/compliance/patients/${encodeURIComponent(p.patientId)}?protocolInstanceId=${encodeURIComponent(p.protocolInstanceId)}`}
+                          className="font-medium text-blue-600 hover:text-blue-700"
+                        >
                           {p.patientId}
                         </Link>
                       </td>
