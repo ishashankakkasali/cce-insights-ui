@@ -305,7 +305,10 @@ export default function Deviations() {
                   {paginatedDeviations.map((d) => (
                     <tr key={d.deviationId} className="hover:bg-gray-50">
                       <td className="py-2 pr-4">
-                        <Link to={`/compliance/patients/${encodeURIComponent(d.patientId)}`} className="font-medium text-blue-600 hover:text-blue-700">
+                        <Link
+                          to={`/compliance/patients/${encodeURIComponent(d.patientId)}?protocolInstanceId=${encodeURIComponent(d.protocolInstanceId)}`}
+                          className="font-medium text-blue-600 hover:text-blue-700"
+                        >
                           {d.patientId}
                         </Link>
                       </td>
