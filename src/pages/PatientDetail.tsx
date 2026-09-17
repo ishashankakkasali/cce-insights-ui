@@ -96,34 +96,37 @@ export default function PatientDetail() {
   const [hasSetDefaultSelection, setHasSetDefaultSelection] = useState(false);
   const [protocolSearch, setProtocolSearch] = useState('');
 
-  // The Protocols panel sticks just below the patient title block, whose
-  // height isn't fixed (it wraps, resizes with the viewport, etc.) — measure
-  // it directly instead of guessing a Tailwind spacing scale value, which
-  // drifted out of sync and let the title block's opaque background cover
-  // the panel's own header while scrolling.
+  // Both the patient title block and the Protocols panel below it are
+  // `position: sticky`, stacked under the app's own sticky header — so both
+  // offsets have to match real, measured element heights, not a guessed
+  // Tailwind spacing value. The app header's height isn't fixed either: it
+  // carries the Ministry of Health branding (logo + three lines of text) and
+  // District/Facility/date filters, taller than a plain single-row header,
+  // so a hardcoded `top-14` (56px) leaves the title block's own "← Back to
+  // Patient List" link covered once scrolled.
   const titleBlockRef = useRef<HTMLDivElement>(null);
+  const [headerHeightPx, setHeaderHeightPx] = useState(56);
   const [protocolsTopPx, setProtocolsTopPx] = useState(176);
   useLayoutEffect(() => {
-    const el = titleBlockRef.current;
-    if (!el) return;
-    // Only a sub-pixel safety margin — the Card's sticky top must match the
-    // title block's stuck bottom edge almost exactly. Too little and the
-    // panel's header gets covered once both are stuck; too much and the
-    // panel sits detectably lower than its sibling column even at rest,
-    // because `position: sticky` enforces its `top` value immediately
-    // whenever the element's natural position would otherwise be higher.
+    const headerEl = document.querySelector('header');
+    const titleEl = titleBlockRef.current;
+    if (!headerEl || !titleEl) return;
+    // Only a sub-pixel safety margin — each sticky element's top must match
+    // the one above it's stuck bottom edge almost exactly. Too little and
+    // the element below gets covered once both are stuck; too much and it
+    // sits detectably lower than expected even at rest, because
+    // `position: sticky` enforces its `top` value immediately whenever the
+    // element's natural position would otherwise be higher.
     const GAP_PX = 4;
     const measure = () => {
-      // Read the element's own resolved `top` (from lg:top-14) rather than
-      // assuming its pixel value — it depends on the root font size, which
-      // browser zoom/accessibility text-size settings can change.
-      const resolvedTop = parseFloat(getComputedStyle(el).top);
-      const titleBlockScreenOffsetPx = Number.isFinite(resolvedTop) ? resolvedTop : 56;
-      setProtocolsTopPx(titleBlockScreenOffsetPx + el.offsetHeight + GAP_PX);
+      const headerH = headerEl.offsetHeight;
+      setHeaderHeightPx(headerH);
+      setProtocolsTopPx(headerH + titleEl.offsetHeight + GAP_PX);
     };
     measure();
     const observer = new ResizeObserver(measure);
-    observer.observe(el);
+    observer.observe(headerEl);
+    observer.observe(titleEl);
     return () => observer.disconnect();
   }, []);
 
@@ -221,7 +224,11 @@ export default function PatientDetail() {
 
   return (
     <>
-      <div ref={titleBlockRef} className="lg:sticky lg:top-14 lg:z-10 lg:bg-gray-50 lg:pb-4">
+      <div
+        ref={titleBlockRef}
+        className="lg:sticky lg:z-10 lg:bg-gray-50 lg:pb-4"
+        style={isDesktop ? { top: `${headerHeightPx}px` } : undefined}
+      >
         <div className="mb-2">
           <Link to="/compliance/patients" className="text-sm text-blue-600 hover:text-blue-700">← Back to Patient List</Link>
         </div>
