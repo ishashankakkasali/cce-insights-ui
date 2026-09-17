@@ -244,11 +244,15 @@ App.tsx (Sidebar + Header + Routes; providers live in main.tsx)
 │   ├── Enrollment Date / Activity Date radio (dateFilterMode — local to this page)
 │   └── PatientComplianceTable (page-size selector + range pagination)
 │
-├── /compliance/patients/:id → PatientDetail
-│   ├── ProtocolTrackingCard × N ("Tracking Since")
-│   ├── Protocol Journey timeline (legend; hides superseded steps; synthetic DEVIATION status)
-│   ├── Step Details table (Action / State / Due / Completed / Source)
-│   └── Right column: Deviations + Intelligence Alerts cards
+├── /compliance/patients/:id → PatientDetail (master-detail: left list, right detail panel)
+│   ├── Left "Protocols" list — one selectable row per protocol instance (sticky, scrolls
+│   │        independently once it overflows); ?protocolInstanceId= deep-links pin + select one
+│   ├── Right "Protocol Journey" panel, scoped to whichever protocol is selected:
+│   │   ├── Header (thumbnail/title/canonical/enrolled-at + status/steps/rate/deviation count)
+│   │   ├── Journey timeline (legend; hides superseded steps; synthetic DEVIATION status)
+│   │   ├── Deviations + Intelligence Alerts, side by side, filtered to the selected protocol
+│   │   └── Step Details table (Action / State / Due / Completed / Source) — collapsed by
+│   │            default, fetched lazily only once its own toggle is opened
 │
 ├── /deviations → Deviations
 │   ├── ProtocolFilter

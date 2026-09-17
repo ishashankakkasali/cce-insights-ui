@@ -364,41 +364,57 @@ The **Referrals Received by HIE** drill-down lists each patient (→ patient det
 ## 5. Patient Detail
 
 **Route:** `/compliance/patients/:patientId`  
-**Purpose:** Individual patient view — protocol tracking with the **Protocol Journey**
-timeline, plus cross-protocol deviations and intelligence-delivery alerts.
+**Purpose:** Individual patient view — a master-detail layout: every protocol the patient is
+enrolled in listed on the left, full detail (journey timeline, deviations, intelligence alerts,
+step details) for whichever one is selected on the right. Replaces the earlier design where every
+protocol's journey rendered fully, stacked one after another on one long page — that didn't scale
+once a patient carried several enrollments at once.
+
+Arriving from the Patient List or the Deviations page (both link with
+`?protocolInstanceId=<id>`) pins that specific protocol to the top of the left list and
+auto-selects it, so a deep link lands on the enrollment the user actually came to look at rather
+than an arbitrary default.
 
 ### APIs Used
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /v1/insights/patients/{id}/compliance-timeline` | Chronological timeline data |
-| `GET /v1/insights/patients/{id}/protocol-tracking` | All protocol instances ("Tracking Since") |
-| `GET /v1/insights/patients/{id}/protocol-tracking/{piId}` | Step details for a protocol instance |
-| `GET /v1/insights/patients/{id}/deviations` | Cross-protocol deviations |
-| `GET /v1/insights/patients/{id}/intelligence-deliveries` | Intelligence-alert deliveries |
+| `GET /v1/insights/patients/{id}/compliance-timeline` | Journey timeline for every protocol (left list + right panel) |
+| `GET /v1/insights/patients/{id}/protocol-tracking` | Title/thumbnail/enrolled-at metadata per protocol instance |
+| `GET /v1/insights/patients/{id}/protocol-tracking/{piId}` | Step Details table for the selected protocol (fetched lazily — only once its toggle is opened) |
+| `GET /v1/insights/patients/{id}/deviations` | Cross-protocol deviations, filtered client-side to the selected protocol |
+| `GET /v1/insights/patients/{id}/intelligence-deliveries` | Intelligence-alert deliveries, filtered client-side to the selected protocol's `protocolCanonical` |
 
 ### Wireframe
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│ Sidebar │  Patient: 260225-0002-5501        ← Back to Patient List           │
-│         │                                                                    │
-│         │  ┌─ Protocol Tracking ───────────────────────────────────────────┐ │
-│         │  │ 🟢 ACTIVE  ANC High-Risk v2.1                                │ │
-│         │  │ Tracking Since: Jan 15, 2026  ·  Rate: 50%  ·  Steps: 3/6    │ │
-│         │  │ ████████░░░░░░░░                              [Details →]    │ │
-│         │  └───────────────────────────────────────────────────────────────┘ │
-│         │                                                                    │
-│         │  ┌─ Protocol Journey ────────────────┐ ┌─ Deviations ───────────┐ │
-│         │  │ Legend: ● Completed ● Pending     │ │ ⚠ ORDER_VIOLATION      │ │
-│         │  │         ● Deviation ● Not started │ │ anc-visit-2            │ │
-│         │  │  ● anc-visit-1  Completed [ON TIME]│ │ Detected: Feb 20       │ │
-│         │  │  ● anc-visit-2  🟣 DEVIATION      │ └─────────────────────────┘ │
-│         │  │  ● anc-visit-3  Pending           │ ┌─ Intelligence Alerts ──┐ │
-│         │  │  (superseded NOT_STARTED hidden)  │ │ overdue-alert · sent   │ │
-│         │  └───────────────────────────────────┘ └─────────────────────────┘ │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────┐
+│ Sidebar │  ← Back to Patient List                                                  │
+│         │  Patient: 260225-0002-5501                                               │
+│         │  ┌─ Protocols ──────────┐ ┌─ Protocol Journey ─────────────────────────┐ │
+│         │  │ 🟢 ACTIVE            │ │ 🟢 ACTIVE  ANC High-Risk v2.1               │ │
+│         │  │ ANC High-Risk v2.1   │ │ Enrolled: Jan 15, 2026   3/6 steps   2 dev. │ │
+│         │  │ http://.../anc-hi... │ │                                              │ │
+│         │  │ 3/6 steps  50%       │ │ Legend: ● Completed ● Pending ● Deviation   │ │
+│         │  │ 2 deviations         │ │         ○ Not started  [Mandatory]          │ │
+│         │  │──────────────────────│ │  ● anc-visit-1  Completed [ON TIME]         │ │
+│         │  │ ⚪ COMPLETED (sel.)   │ │  ● anc-visit-2  🟣 DEVIATION                │ │
+│         │  │ Facility Visit       │ │  ● anc-visit-3  Pending                     │ │
+│         │  │ 1/1 steps  100%      │ │  (superseded NOT_STARTED hidden)            │ │
+│         │  │ (scrolls indep. once │ │ ┌─ Deviations ────────┐┌─ Intell. Alerts ──┐│ │
+│         │  │  list overflows;     │ │ │ ⚠ ORDER_VIOLATION    ││ overdue-alert     ││ │
+│         │  │  panel stays sticky) │ │ │ anc-visit-2          ││ · sent            ││ │
+│         │  └───────────────────────┘ └──────────────────────┘└───────────────────┘│ │
+│         │                            ┌─ Step Details ▸ Show raw step-level data ──┐ │
+│         │                            │ (collapsed by default; expands in place)   │ │
+│         │                            └─────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+Selecting a different protocol on the left swaps the entire right panel to that protocol's own
+journey/deviations/alerts/step-details — nothing from one protocol is ever mixed into another's
+view. The left list and the "Back to Patient List" + page title above it are both sticky, so
+they stay visible while a long journey on the right scrolls.
 
 ### Protocol Journey Visibility Rules
 
@@ -410,11 +426,10 @@ Each completed journey step shows a timeliness badge derived from `completionSta
 
 | `completionStatus` | Badge | Color |
 |--------------------|-------|-------|
-| `EARLY` | **EARLY** | green |
-| `ON_TIME` | **ON TIME** | emerald |
+| `ON_TIME` | **ON TIME** | green |
 | `LATE` | **LATE** | amber |
 
-The LATE badge renders only for `completionStatus === 'LATE'` (it is no longer shown for any non-`ON_TIME` status), and `EARLY` now has its own distinct badge.
+The type also defines `EARLY` (`CompletionStatus = 'EARLY' \| 'ON_TIME' \| 'LATE'`), but no badge is rendered for it — the component only checks for `'LATE'` and `'ON_TIME'` explicitly, so a step completed early shows no timeliness badge at all.
 
 ---
 
