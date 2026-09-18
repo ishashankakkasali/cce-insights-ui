@@ -433,6 +433,12 @@ export default function PatientDetail() {
                       <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
                       <span className="text-xs text-gray-600">Deviation</span>
                     </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-purple-100 text-purple-700">
+                        Mandatory
+                      </span>
+                      <span className="text-xs text-gray-600">Required step (must)</span>
+                    </div>
                   </div>
 
                   {deviations.isLoading && <div className="mb-3"><LoadingSpinner /></div>}
@@ -450,11 +456,17 @@ export default function PatientDetail() {
                         const isSubStep = depth > 0;
                         const isDeviation = displayStatus === 'DEVIATION';
                         const isNotStarted = displayStatus === 'NOT_STARTED';
+                        const isOutstandingMandatory = step.requiredBehavior === 'must' && !isDeviation
+                          && displayStatus !== 'COMPLETED' && displayStatus !== 'SKIPPED';
 
                         return (
                           <div
                             key={`${proto.protocolInstanceId}-j-${i}`}
-                            className={`flex gap-3 py-2.5 ${isDeviation ? 'rounded-lg bg-red-50 border border-red-200' : ''}`}
+                            className={`flex gap-3 py-2.5 ${
+                              isDeviation ? 'rounded-lg bg-red-50 border border-red-200'
+                                : isOutstandingMandatory ? 'rounded-lg bg-purple-50 border border-purple-100'
+                                : ''
+                            }`}
                             style={{ paddingLeft: `${depth * 24}px` }}
                           >
                             <div className="flex flex-col items-center">
@@ -471,6 +483,11 @@ export default function PatientDetail() {
                                 <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${info.bg} ${info.text}`}>
                                   {info.label}
                                 </span>
+                                {step.requiredBehavior === 'must' && (
+                                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-700">
+                                    Mandatory
+                                  </span>
+                                )}
 
                                 {step.completionCount > 1 && (
                                   <span className="text-xs text-gray-400">×{step.completionCount}</span>
