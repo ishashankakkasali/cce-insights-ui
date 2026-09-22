@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PageHeader } from '../components/shared/PageHeader';
 import { MetricCard } from '../components/shared/MetricCard';
 import { Card } from '../components/shared/Card';
@@ -85,8 +85,14 @@ export default function ComplianceOverview() {
   const protocols = useProtocols();
   const facilities = useFacilityLookup();
 
+  // Only default to the first protocol once, when the list first loads - not every time
+  // protocolId goes back to '' (empty), which also happens when the user deliberately picks
+  // "All Protocols". Without this guard that selection was immediately overwritten back to
+  // the first protocol by this same effect re-firing (same bug as ProtocolFilter.tsx had).
+  const hasDefaulted = useRef(false);
   useEffect(() => {
-    if (!protocolId && protocols.data && protocols.data.length > 0) {
+    if (!hasDefaulted.current && !protocolId && protocols.data && protocols.data.length > 0) {
+      hasDefaulted.current = true;
       setProtocolId(protocols.data[0].id);
     }
   }, [protocols.data, protocolId]);

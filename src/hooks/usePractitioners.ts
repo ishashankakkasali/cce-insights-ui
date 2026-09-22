@@ -7,6 +7,7 @@ export function usePractitionerRanking(params?: {
   rankBy?: PractitionerRankBy;
   order?: SortOrder;
   limit?: number;
+  protocolDefinitionId?: string;
 }) {
   const filters = useGlobalFilters();
   return useQuery({
