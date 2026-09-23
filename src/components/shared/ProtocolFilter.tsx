@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useProtocols } from '../../hooks/useLookups';
 
 interface ProtocolFilterProps {
@@ -8,9 +8,15 @@ interface ProtocolFilterProps {
 
 export function ProtocolFilter({ value, onChange }: ProtocolFilterProps) {
   const protocols = useProtocols();
+  // Only default to the first protocol once, when the list first loads - not every time
+  // `value` goes back to '' (empty), which also happens when the user deliberately picks
+  // "All Protocols". Without this guard that selection was immediately overwritten back
+  // to the first protocol by this same effect re-firing.
+  const hasDefaulted = useRef(false);
 
   useEffect(() => {
-    if (!value && protocols.data && protocols.data.length > 0) {
+    if (!hasDefaulted.current && !value && protocols.data && protocols.data.length > 0) {
+      hasDefaulted.current = true;
       onChange(protocols.data[0].id);
     }
   }, [protocols.data, value, onChange]);

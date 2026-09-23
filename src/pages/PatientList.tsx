@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '../components/shared/PageHeader';
 import { Card } from '../components/shared/Card';
@@ -23,8 +23,11 @@ export default function PatientList() {
 
   const protocols = useProtocols();
 
+  // Same defaulting-effect-refires-on-clear bug as ComplianceOverview.tsx/ProtocolFilter.tsx.
+  const hasDefaulted = useRef(false);
   useEffect(() => {
-    if (!protocolId && protocols.data && protocols.data.length > 0) {
+    if (!hasDefaulted.current && !protocolId && protocols.data && protocols.data.length > 0) {
+      hasDefaulted.current = true;
       setProtocolId(protocols.data[0].id);
     }
   }, [protocols.data, protocolId]);

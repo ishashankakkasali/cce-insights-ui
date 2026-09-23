@@ -46,7 +46,7 @@ export default function FacilityAnalytics() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
 
-  const ranking = useFacilityRanking({ rankBy, order, cursor });
+  const ranking = useFacilityRanking({ rankBy, order, cursor, protocolDefinitionId: protocolId || undefined });
   const hotspots = useAtRiskHotspots({ limit: 10 });
   const complianceSummary = useDashboardComplianceSummary();
   const facilityMetrics = complianceSummary.data?.facilities;

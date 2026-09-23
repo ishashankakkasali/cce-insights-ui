@@ -29,7 +29,7 @@ export default function Deviations() {
 
   const intel = useIntelligenceSummary();
   const trends = useDeviationTrends(interval);
-  const byAction = useDeviationsByAction();
+  const byAction = useDeviationsByAction(protocolId || undefined);
   const actionOrder = useActionOrder(protocolId);
   const facilities = useFacilityLookup();
 
@@ -52,9 +52,10 @@ export default function Deviations() {
   const getFacilityName = (facilityId: string) => facilityNameMap.get(facilityId) || facilityId;
 
   const deviationList = useQuery({
-    queryKey: ['deviations', 'list', { deviationType, ...filters }],
+    queryKey: ['deviations', 'list', { deviationType, protocolId, ...filters }],
     queryFn: () => getDeviations({
       deviationType: deviationType || undefined,
+      protocolDefinitionId: protocolId || undefined,
       ...filters,
       limit: 1000,
     }),

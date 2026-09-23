@@ -8,6 +8,7 @@ export function getPractitionerRanking(params?: {
   startDate?: string;
   endDate?: string;
   facilityId?: string;
+  protocolDefinitionId?: string;
 }) {
   return apiGet<PractitionerRanking[]>('/practitioners/ranking', {
     rankBy: params?.rankBy,
@@ -16,5 +17,6 @@ export function getPractitionerRanking(params?: {
     startDate: params?.startDate,
     endDate: params?.endDate,
     facilityId: params?.facilityId,
+    protocolDefinitionId: params?.protocolDefinitionId,
   });
 }

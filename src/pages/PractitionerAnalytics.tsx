@@ -35,7 +35,7 @@ export default function PractitionerAnalytics() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 15;
 
-  const ranking = usePractitionerRanking({ rankBy, order, limit: 200 });
+  const ranking = usePractitionerRanking({ rankBy, order, limit: 200, protocolDefinitionId: protocolId || undefined });
   const complianceSummary = useDashboardComplianceSummary();
   const practitionerMetrics = complianceSummary.data?.practitioners;
 
