@@ -34,10 +34,17 @@ export interface PractitionerComplianceMetric {
   below75: number;
 }
 
+export interface ConsentComplianceMetric {
+  totalReceived: number;
+  totalVerified: number;
+  verificationRate: number;
+}
+
 export interface DashboardComplianceSummary {
   patients: ComplianceMetric;
   facilities: FacilityComplianceMetric;
   practitioners: PractitionerComplianceMetric;
+  consent: ConsentComplianceMetric;
 }
 
 export function getDashboardOverview(params?: {

@@ -76,6 +76,14 @@
 | Non-Compliant Care Journeys | `patients.nonCompliantPatients` | Has active deviations |
 | Active Protocols | `dashboard/compliance-summary → activeProtocols` | Protocols being tracked |
 
+**Consent Metrics row** — Tiberbu (Kenya SHA outpatient protocol) specific, shown with a "Tiberbu" badge next to the section heading (`StatusBadge`, `components/shared/StatusBadge.tsx`):
+
+| Card | Value Source | Description |
+|------|-------------|-------------|
+| Total Consents Received | `compliance-summary → consent.totalReceived` | `consent-request` steps completed |
+| Total Consents Verified | `consent.totalVerified` (denominator: `totalReceived`) | `consent-verification` steps completed |
+| Consent Verification Rate | `consent.verificationRate` | `totalVerified / totalReceived`, computed server-side |
+
 ---
 
 ## 2. Compliance Overview

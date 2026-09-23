@@ -1,6 +1,7 @@
 import { PageHeader } from '../components/shared/PageHeader';
 import { MetricCard } from '../components/shared/MetricCard';
 import { Card } from '../components/shared/Card';
+import { StatusBadge } from '../components/shared/StatusBadge';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { DeviationTrendChart } from '../components/charts/DeviationTrendChart';
@@ -33,6 +34,7 @@ export default function Dashboard() {
   const patients = compliance?.patients;
   const facilities = compliance?.facilities;
   const practitioners = compliance?.practitioners;
+  const consent = compliance?.consent;
 
   return (
     <>
@@ -62,6 +64,32 @@ export default function Dashboard() {
           title="Compliance Rate"
           description="Percentage of compliant patients out of total tracked patients."
           value={formatPercentage(patients?.complianceRate ?? 0)}
+        />
+      </div>
+      </div>
+
+      {/* Consent Metrics — Tiberbu (Kenya SHA protocol) specific */}
+      <div className="mt-4 rounded-xl border border-gray-200 p-4">
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-gray-700">Consent Metrics</h3>
+        <StatusBadge label="Tiberbu" color={{ bg: 'bg-blue-50', text: 'text-blue-700' }} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <MetricCard
+          title="Total Consents Received"
+          description="Consent-request steps completed (patient consent requested)."
+          value={formatNumber(consent?.totalReceived ?? 0)}
+        />
+        <MetricCard
+          title="Total Consents Verified"
+          description="Consent-verification steps completed (2nd step of the consent flow)."
+          value={formatNumber(consent?.totalVerified ?? 0)}
+          denomination={formatNumber(consent?.totalReceived ?? 0)}
+        />
+        <MetricCard
+          title="Consent Verification Rate"
+          description="Percentage of received consents that have gone on to be verified."
+          value={formatPercentage(consent?.verificationRate ?? 0)}
         />
       </div>
       </div>
