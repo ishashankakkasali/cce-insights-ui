@@ -89,13 +89,13 @@ export default function PractitionerAnalytics() {
       <div className="mb-4 flex flex-wrap items-end gap-4">
         <div>
           <label className="mb-1 block text-xs font-medium text-gray-500">Protocol</label>
-          <ProtocolFilter value={protocolId} onChange={setProtocolId} />
+          <ProtocolFilter value={protocolId} onChange={(v) => { setProtocolId(v); setPage(1); }} />
         </div>
         <div className="flex gap-2 items-end">
           {RANK_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setRankBy(opt.value)}
+              onClick={() => { setRankBy(opt.value); setPage(1); }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 rankBy === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
@@ -108,7 +108,7 @@ export default function PractitionerAnalytics() {
           {ORDER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => setOrder(opt.value)}
+              onClick={() => { setOrder(opt.value); setPage(1); }}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                 order === opt.value ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}

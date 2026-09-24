@@ -82,7 +82,7 @@ export default function Deviations() {
 
       <div className="mb-4">
         <label className="mb-1 block text-xs font-medium text-gray-500">Protocol</label>
-        <ProtocolFilter value={protocolId} onChange={setProtocolId} />
+        <ProtocolFilter value={protocolId} onChange={(v) => { setProtocolId(v); setPage(1); }} />
       </div>
 
       {intel.isLoading ? <LoadingSpinner /> : intel.error ? <ErrorAlert error={intel.error} /> : intel.data ? (
