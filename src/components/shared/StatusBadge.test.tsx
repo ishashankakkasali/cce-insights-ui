@@ -17,12 +17,12 @@ describe('StatusBadge', () => {
 
   it('renders the status dot only when a dot colour is supplied', () => {
     const { container: withDot } = render(
-      <StatusBadge label="DUE" color={{ bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' }} />,
+      <StatusBadge label="OVERDUE" color={{ bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' }} />,
     );
     expect(withDot.querySelector('.bg-blue-500')).not.toBeNull();
 
     const { container: withoutDot } = render(
-      <StatusBadge label="DUE" color={{ bg: 'bg-blue-100', text: 'text-blue-700' }} />,
+      <StatusBadge label="OVERDUE" color={{ bg: 'bg-blue-100', text: 'text-blue-700' }} />,
     );
     // The only child of the badge should be the label text — no dot span.
     expect(withoutDot.querySelector('span > span')).toBeNull();

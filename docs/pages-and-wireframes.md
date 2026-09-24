@@ -75,7 +75,7 @@ lost its "Search Facility" free-text box, now redundant with the global picker.
   server-side `limit=5` desc/asc lists broke under the district filter, since the limit is applied
   before district scoping.)
 - **Adoption** page removed from the sidebar (its metrics now live in the Facility Ranking).
-- **Compliance** transactions **Due / Overdue / Missed** tiles link to the Deviations page with the
+- **Compliance** transactions **Overdue / Missed** tiles link to the Deviations page with the
   matching filter (carrying the protocol); the **Deviations** top cards filter the Deviation List.
 - **Patients** page — the top Referrals card was removed.
 
@@ -182,7 +182,7 @@ Notes:
 │         │  └──────────┘ └──────────┘ └──────────────┘ └──────────────┘     │
 │         │                                                                    │
 │         │  ┌─ Transactions ───────────────────────────────────────────────┐ │
-│         │  │ Total Steps │ Completed │ Due │ Overdue │ Missed │ Pending    │ │
+│         │  │ Total Steps │ Completed │ Not Started │ Overdue │ Missed │ Not Yet Judged │
 │         │  └──────────────────────────────────────────────────────────────┘ │
 │         │                                                                    │
 │         │  ┌─ SERVICE WORKFLOW COMPLIANCE (vertical timeline) ────────────┐  │
@@ -295,8 +295,8 @@ Notes:
 | Action | `actionId` | Step name from PlanDefinition |
 | Completed | `completedCount / totalInstances` | Ratio |
 | Rate | `completionRate` | Percentage bar |
-| On Time | `timelinessDistribution.onTime` | Count |
-| Late | `timelinessDistribution.late` | Count, highlighted amber |
+| On Time | `timelinessDistribution.completedOnTime` | Count (completed + SLA met) |
+| Late | `timelinessDistribution.completedLate` | Count (completed + SLA overdue/missed), highlighted amber |
 | Avg Days | `avgDaysToComplete` | Average days to complete |
 | Median | `medianDaysToComplete` | Median days (tooltip) |
 
@@ -418,18 +418,20 @@ they stay visible while a long journey on the right scrolls.
 
 ### Protocol Journey Visibility Rules
 
-Root steps that are `NOT_STARTED` are suppressed when a later root step in the same protocol has already been triggered (i.e., any non-`NOT_STARTED`, non-`PENDING`, non-`DUE` root step exists after them). Sub-steps inherit parent visibility — a sub-step is hidden if its parent root step is hidden, ensuring orphaned sub-step entries never appear (e.g., "Laboratory Results" is not shown unless "Lab Order" is also shown). A step with an associated deviation (`ORDER_VIOLATION`/`OVERDUE`/`MISSED`) and a non-terminal status is rendered with a synthetic **DEVIATION** display status (purple).
+Root steps that are untriggered — `status` `NOT_STARTED` with no `stepStatus`, i.e. no step instance yet — are suppressed when a later root step in the same protocol has progressed (any root step after them whose `status` is not `NOT_STARTED`). A step that exists but is still outstanding with no breached deadline also arrives as `NOT_STARTED`, but with `stepStatus: 'NOT_STARTED'`; the page renders it as **Pending** (blue) and never hides it. Sub-steps inherit parent visibility — a sub-step is hidden if its parent root step is hidden, ensuring orphaned sub-step entries never appear (e.g., "Laboratory Results" is not shown unless "Lab Order" is also shown). A step with an associated deviation (`ORDER_VIOLATION`/`OVERDUE`/`MISSED`) and a non-terminal status is rendered with a synthetic **DEVIATION** display status (purple).
 
-### Completion-status badges
+### Timeliness badges
 
-Each completed journey step shows a timeliness badge derived from `completionStatus`:
+Each completed journey step shows a timeliness badge read from the CCE 2.0.0 status pair:
 
-| `completionStatus` | Badge | Color |
-|--------------------|-------|-------|
-| `ON_TIME` | **ON TIME** | green |
-| `LATE` | **LATE** | amber |
+| `stepStatus` | `slaStatus` | Badge | Color |
+|--------------|-------------|-------|-------|
+| `COMPLETED` | `MET` | **ON TIME** | green |
+| `COMPLETED` | `OVERDUE` / `MISSED` | **LATE** | amber |
 
-The type also defines `EARLY` (`CompletionStatus = 'EARLY' \| 'ON_TIME' \| 'LATE'`), but no badge is rendered for it — the component only checks for `'LATE'` and `'ON_TIME'` explicitly, so a step completed early shows no timeliness badge at all.
+A completed step whose `slaStatus` is still null (the verdict lands within one Step SLA cycle, and
+never for an optional step) shows no timeliness badge. 1.x's `EARLY` has no 2.0.0 equivalent — it is
+`MET`.
 
 ---
 
@@ -873,7 +875,7 @@ Props: `label`, `value`, `icon`, `trend?` (up/down/neutral), `trendLabel?`
 
 Unified badge component (`StatusBadge.tsx`) for compliance categories, step states, deviation types, processing status, and protocol statuses. Color-coded pills with consistent styling:
 - Compliance: `on_track` (green), `non_compliant` (red)
-- Step states: PENDING (gray), DUE (blue), OVERDUE (amber), MISSED (red), COMPLETED (green), SKIPPED (slate)
+- Step states: NOT_STARTED (gray), OVERDUE (amber), MISSED (red), COMPLETED (green)
 - Deviation types: `OVERDUE` (amber), `MISSED` (red), `ORDER_VIOLATION` (purple)
 - Processing: `MATCHED` (green), `ZERO_MATCH` (amber), `DUPLICATE` (gray)
 

@@ -4,6 +4,29 @@
 
 ## Unreleased
 
+### CCE 2.0.0 step status model
+
+Follows cce-insights-service `release-2.0.0`, where a step carries two independent statuses —
+`stepStatus` (`NOT_STARTED` / `COMPLETED`: was it recorded?) and `slaStatus` (`OVERDUE` / `MISSED` /
+`MET`, null until judged: was it on time?) — in place of 1.x's single `state` and `completionStatus`.
+PENDING, DUE and SKIPPED no longer exist, and EARLY / ON_TIME are both `MET`.
+
+- **Compliance → Transactions tiles:** Due and Pending are replaced by **Not Started** (recorded
+  nothing yet) and **Not Yet Judged** (no deadline fallen due). Completed's On Time / Late split reads
+  `completedOnTime` / `completedLate`. Overdue and Missed are now SLA verdicts, so they include steps
+  completed after the deadline; their tooltips say so. The old Due tile's link to the Deviations page
+  is gone with it — Overdue and Missed still link.
+- **Protocol Analytics → Step table:** On Time / Late read `timelinessDistribution.completedOnTime` /
+  `completedLate`.
+- **Patient detail:**
+  - Journey: an existing, outstanding step with no breached deadline is still shown as **Pending**,
+    now derived from `status: NOT_STARTED` with a `stepStatus`; an action with no step yet stays
+    **Not Started** and keeps the old visibility rule. ON TIME / LATE badges read the status pair.
+  - Protocol tracking table: the status badge is derived from `stepStatus` + `slaStatus`.
+- `api/types.ts`: `StepState` / `CompletionStatus` → `StepStatus`, `SlaStatus` and `StepDisplayStatus`;
+  timeline types lose `step_due` / `step_pending` / `step_skipped` and gain `step_not_started`.
+  `STATE_COLORS` follows; the unused `COMPLETION_COLORS` is removed.
+
 ### Deviations by Facility and Type (RI-34)
 
 - **New chart on the Deviations page**, positioned between "Deviation Trends" and "Most Deviated
