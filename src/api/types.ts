@@ -49,16 +49,19 @@ export interface ComplianceSummary {
     expired: number;
   };
   complianceRate: number;
+  // CCE 2.0.0 two-status model: stepStatus says whether a step was recorded, slaStatus whether it
+  // was on time. completed + notStarted split the steps one way, slaMet + overdue + missed +
+  // slaUnjudged the other. overdue / missed are SLA verdicts, so they include late completions.
   stepMetrics: {
     totalSteps: number;
     completed: number;
-    onTime: number;
-    late: number;
-    early: number;
+    notStarted: number;
+    slaMet: number;
     overdue: number;
     missed: number;
-    due: number;
-    pending: number;
+    slaUnjudged: number;
+    completedOnTime: number;
+    completedLate: number;
   };
   deviationCount: number;
   deviationBreakdown: {
@@ -118,11 +121,12 @@ export interface JourneyStep {
   actionId: string;
   parentActionId?: string;
   stepName: string;
-  status: 'COMPLETED' | 'PENDING' | 'NOT_STARTED' | 'OVERDUE' | 'MISSED' | 'SKIPPED' | 'DUE';
+  status: StepDisplayStatus;
+  stepStatus?: StepStatus | null;   // null when no step instance exists yet
+  slaStatus?: SlaStatus | null;     // null = not yet judged
   completionCount: number;
   effectiveDateTime?: string;
   dueDate?: string;
-  completionStatus?: CompletionStatus;
   source?: string;
   practitioner?: string;
   facilityId?: string;
@@ -134,12 +138,13 @@ export interface JourneyStep {
 
 export interface TimelineEntry {
   timestamp: string;
-  type: 'enrollment' | 'step_completed' | 'step_overdue' | 'step_missed' | 'step_due' | 'step_pending' | 'step_skipped';
+  type: 'enrollment' | 'step_completed' | 'step_overdue' | 'step_missed' | 'step_not_started';
   description?: string;
   actionId?: string;
   stepName?: string;
-  state?: StepState | 'ENROLLED';
-  completionStatus?: CompletionStatus;
+  state?: StepDisplayStatus | 'ENROLLED';
+  stepStatus?: StepStatus;
+  slaStatus?: SlaStatus | null;
   source?: string;
   daysOverdue?: number;
   effectiveDateTime?: string;
@@ -198,18 +203,22 @@ export interface PatientIntelligenceDelivery {
 export interface StepInstance {
   stepInstanceId: string;
   actionId: string;
-  state: StepState;
+  stepStatus: StepStatus;
+  slaStatus?: SlaStatus;            // absent until the Step SLA Service reaches a verdict
   dueDate: string | null;
-  overdueDate: string | null;
-  missedDate: string | null;
-  completedAt: string | null;
-  completedBySource: string | null;
-  completionStatus: CompletionStatus | null;
+  overdueDate?: string;             // scheduled SLA thresholds; mandatory steps only
+  missedDate?: string;
+  completedAt?: string;
+  completedBySource?: string;
   daysOverdue?: number;
 }
 
-export type StepState = 'PENDING' | 'DUE' | 'OVERDUE' | 'MISSED' | 'COMPLETED' | 'SKIPPED';
-export type CompletionStatus = 'EARLY' | 'ON_TIME' | 'LATE';
+/** Did the expected event arrive? */
+export type StepStatus = 'NOT_STARTED' | 'COMPLETED';
+/** Was the deadline met? Null / absent until judged. */
+export type SlaStatus = 'OVERDUE' | 'MISSED' | 'MET';
+/** One badge per step: COMPLETED, else the SLA verdict of an outstanding step, else NOT_STARTED. */
+export type StepDisplayStatus = 'COMPLETED' | 'OVERDUE' | 'MISSED' | 'NOT_STARTED';
 
 export interface PatientEvent {
   eventId: string;
@@ -380,14 +389,13 @@ export interface StepAnalytics {
     completedCount: number;
     completionRate: number;
     timelinessDistribution: {
-      early: number;
-      onTime: number;
-      late: number;
+      completedOnTime: number;   // completed + SLA met
+      completedLate: number;     // completed + SLA overdue | missed
     };
-    overdueCount: number;
+    overdueCount: number;        // SLA verdicts — include steps completed late
     missedCount: number;
-    skippedCount: number;
-    pendingCount: number;
+    notStartedCount: number;
+    slaUnjudgedCount: number;
     avgDaysToComplete: number;
     medianDaysToComplete: number;
     requiredBehavior?: 'must' | 'could';

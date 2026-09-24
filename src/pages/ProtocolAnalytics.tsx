@@ -63,8 +63,8 @@ export default function ProtocolAnalytics() {
                         <span>{formatPercentage(s.completionRate)}</span>
                       </div>
                     </td>
-                    <td className="py-2 pr-4">{formatNumber(s.timelinessDistribution.onTime)}</td>
-                    <td className="py-2 pr-4 text-amber-600">{formatNumber(s.timelinessDistribution.late)}</td>
+                    <td className="py-2 pr-4">{formatNumber(s.timelinessDistribution.completedOnTime)}</td>
+                    <td className="py-2 pr-4 text-amber-600">{formatNumber(s.timelinessDistribution.completedLate)}</td>
                     <td className="py-2">{s.avgDaysToComplete?.toFixed(1) ?? '—'}</td>
                   </tr>
                 ))}

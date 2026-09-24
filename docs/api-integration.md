@@ -180,16 +180,18 @@ export interface ComplianceSummary {
     expired: number;
   };
   complianceRate: number;
+  // CCE 2.0.0: stepStatus (was it recorded?) and slaStatus (was it on time?) are independent.
+  // overdue / missed are SLA verdicts, so they include steps completed after the deadline.
   stepMetrics: {
     totalSteps: number;
-    completed: number;
-    onTime: number;
-    late: number;
-    early: number;
-    due: number;
+    completed: number;        // stepStatus = COMPLETED
+    notStarted: number;       // stepStatus = NOT_STARTED
+    slaMet: number;
     overdue: number;
     missed: number;
-    pending: number;
+    slaUnjudged: number;      // no verdict yet (no deadline due; optional steps)
+    completedOnTime: number;  // COMPLETED + MET
+    completedLate: number;    // COMPLETED + OVERDUE | MISSED
   };
   deviationCount: number;
   deviationBreakdown: {
@@ -245,10 +247,11 @@ export interface PatientTimeline {
 
 export interface TimelineEntry {
   timestamp: string;
-  type: 'enrollment' | 'step_completed' | 'step_overdue' | 'step_missed' | 'step_due';
+  type: 'enrollment' | 'step_completed' | 'step_overdue' | 'step_missed' | 'step_not_started';
   description?: string;
   actionId?: string;
-  completionStatus?: CompletionStatus;
+  stepStatus?: StepStatus;
+  slaStatus?: SlaStatus | null;
   source?: string;
   daysOverdue?: number;
 }
@@ -277,18 +280,20 @@ export interface ProtocolTrackingDetail {
 export interface StepInstance {
   stepInstanceId: string;
   actionId: string;
-  state: StepState;
+  stepStatus: StepStatus;
+  slaStatus?: SlaStatus;            // absent until the Step SLA Service reaches a verdict
   dueDate: string | null;
-  overdueDate: string | null;
-  missedDate: string | null;
-  completedAt: string | null;
-  completedBySource: string | null;
-  completionStatus: CompletionStatus | null;
+  overdueDate?: string;             // scheduled SLA thresholds; mandatory steps only
+  missedDate?: string;
+  completedAt?: string;
+  completedBySource?: string;
   daysOverdue?: number;
 }
 
-export type StepState = 'PENDING' | 'DUE' | 'OVERDUE' | 'MISSED' | 'COMPLETED' | 'SKIPPED';
-export type CompletionStatus = 'EARLY' | 'ON_TIME' | 'LATE';
+export type StepStatus = 'NOT_STARTED' | 'COMPLETED';
+export type SlaStatus = 'OVERDUE' | 'MISSED' | 'MET';
+// One badge per step: COMPLETED, else an outstanding step's SLA verdict, else NOT_STARTED.
+export type StepDisplayStatus = 'COMPLETED' | 'OVERDUE' | 'MISSED' | 'NOT_STARTED';
 
 export interface PatientEvent {
   eventId: string;
@@ -453,14 +458,13 @@ export interface StepAnalytics {
     completedCount: number;
     completionRate: number;
     timelinessDistribution: {
-      early: number;
-      onTime: number;
-      late: number;
+      completedOnTime: number;
+      completedLate: number;
     };
-    overdueCount: number;
+    overdueCount: number;       // SLA verdicts — include steps completed late
     missedCount: number;
-    skippedCount: number;
-    pendingCount: number;
+    notStartedCount: number;
+    slaUnjudgedCount: number;
     avgDaysToComplete: number;
     medianDaysToComplete: number;
   }[];
@@ -618,15 +622,17 @@ export interface PipelineLoss {
 export interface JourneyStep {
   actionId: string;
   stepName?: string;
-  status: StepState | 'NOT_STARTED';
+  status: StepDisplayStatus;
+  stepStatus?: StepStatus | null;   // null for an action with no step instance yet
+  slaStatus?: SlaStatus | null;
   depth?: number;            // 0 = root step; >0 = sub-step (used by PatientDetail visibility rules)
   dueDate?: string | null;
   completedAt?: string | null;
   completedBySource?: string | null;
   effectiveDateTime?: string;
 }
-// TimelineEntry.type now also includes 'step_pending' | 'step_skipped'; entries may carry
-// stepName?, state?: StepState | 'ENROLLED', effectiveDateTime?.
+// TimelineEntry entries may also carry stepName?, state?: StepDisplayStatus | 'ENROLLED',
+// effectiveDateTime?. (2.0.0 dropped step_due / step_pending / step_skipped.)
 
 // ─── KPI / analytics additions ───────────────────────────────
 export interface EventKpis { /* cumulative event pipeline KPIs incl. pipeline loss */ }

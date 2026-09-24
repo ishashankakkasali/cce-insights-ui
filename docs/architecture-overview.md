@@ -492,12 +492,10 @@ Icons from `@heroicons/react`: `ChartBarIcon`, `ClipboardDocumentCheckIcon`, `Ex
 
 | State | Background | Text | Dot | Tailwind |
 |-------|-----------|------|-----|----------|
-| `PENDING` | gray-100 | gray-700 | gray-400 | `bg-gray-100 text-gray-700` |
-| `DUE` | blue-100 | blue-700 | blue-500 | `bg-blue-100 text-blue-700` |
+| `NOT_STARTED` | gray-100 | gray-700 | gray-400 | `bg-gray-100 text-gray-700` |
 | `OVERDUE` | amber-100 | amber-700 | amber-500 | `bg-amber-100 text-amber-700` |
 | `MISSED` | red-100 | red-700 | red-500 | `bg-red-100 text-red-700` |
 | `COMPLETED` | green-100 | green-700 | green-500 | `bg-green-100 text-green-700` |
-| `SKIPPED` | slate-100 | slate-500 | slate-400 | `bg-slate-100 text-slate-500` |
 
 ### Deviation Type Palette
 
