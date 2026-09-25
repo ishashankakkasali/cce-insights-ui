@@ -9,9 +9,13 @@ import { usePatientTimeline, usePatientProtocolTracking, usePatientProtocolTrack
 import { formatDate, formatDateTime } from '../utils/dates';
 import { formatPercentage } from '../utils/formatters';
 import { STATUS_COLORS, STATE_COLORS } from '../utils/colors';
-import type { ProtocolInstanceStatus, StepState, JourneyStep } from '../api/types';
+import type { ProtocolInstanceStatus, JourneyStep } from '../api/types';
+import { isUntriggered, stepDisplayStatus } from '../utils/stepStatus';
 
-type JourneyDisplayStatus = JourneyStep['status'] | 'DEVIATION';
+// PENDING is a UI-only state: the step exists but its event has not arrived and no deadline has
+// been breached. The API reports it as NOT_STARTED, the same as an action with no step yet, and only
+// stepStatus (null for the latter) tells the two apart.
+type JourneyDisplayStatus = JourneyStep['status'] | 'PENDING' | 'DEVIATION';
 
 /** Convert Google Drive URLs to embeddable thumbnail URLs */
 function toDirectImageUrl(url: string): string {
@@ -26,10 +30,8 @@ function toDirectImageUrl(url: string): string {
 const JOURNEY_STATUS: Record<JourneyDisplayStatus, { bg: string; text: string; dot: string; label: string }> = {
   COMPLETED:   { bg: 'bg-green-50',  text: 'text-green-700',  dot: 'bg-green-500',  label: 'Completed' },
   PENDING:     { bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-400',   label: 'Pending' },
-  DUE:         { bg: 'bg-blue-50',   text: 'text-blue-700',   dot: 'bg-blue-400',   label: 'Due' },
   OVERDUE:     { bg: 'bg-amber-50',  text: 'text-amber-700',  dot: 'bg-amber-500',  label: 'Overdue' },
   MISSED:      { bg: 'bg-red-50',    text: 'text-red-700',    dot: 'bg-red-500',    label: 'Missed' },
-  SKIPPED:     { bg: 'bg-gray-50',   text: 'text-gray-600',   dot: 'bg-gray-400',   label: 'Skipped' },
   NOT_STARTED: { bg: 'bg-gray-50',   text: 'text-gray-400',   dot: 'bg-gray-300',   label: 'Not Started' },
   DEVIATION:   { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500', label: 'Deviation' },
 };
@@ -448,16 +450,17 @@ export default function PatientDetail() {
                     <div className="space-y-0">
                       {journeySteps.map((step, i, arr) => {
                         const hasDeviation = deviationActionIds.has(step.actionId);
-                        const displayStatus: JourneyDisplayStatus = hasDeviation && step.status !== 'COMPLETED' && step.status !== 'SKIPPED'
+                        const isPending = step.status === 'NOT_STARTED' && !isUntriggered(step);
+                        const displayStatus: JourneyDisplayStatus = hasDeviation && step.status !== 'COMPLETED'
                           ? 'DEVIATION'
-                          : step.status;
+                          : isPending ? 'PENDING' : step.status;
                         const info = JOURNEY_STATUS[displayStatus] ?? JOURNEY_STATUS.NOT_STARTED;
                         const depth = step.depth ?? 0;
                         const isSubStep = depth > 0;
                         const isDeviation = displayStatus === 'DEVIATION';
                         const isNotStarted = displayStatus === 'NOT_STARTED';
                         const isOutstandingMandatory = step.requiredBehavior === 'must' && !isDeviation
-                          && displayStatus !== 'COMPLETED' && displayStatus !== 'SKIPPED';
+                          && displayStatus !== 'COMPLETED';
 
                         return (
                           <div
@@ -494,7 +497,7 @@ export default function PatientDetail() {
                                 )}
                               </div>
                               <div className="mt-1 flex flex-wrap items-center gap-2">
-                                {step.dueDate && (step.status === 'MISSED' || step.status === 'OVERDUE' || step.status === 'PENDING' || step.status === 'DUE') && (
+                                {step.dueDate && (step.status === 'MISSED' || step.status === 'OVERDUE' || isPending) && (
                                   <span className="text-xs text-gray-500">Due: {formatDate(step.dueDate)}</span>
                                 )}
                                 {(step.status === 'OVERDUE' || step.status === 'MISSED') && (
@@ -505,12 +508,12 @@ export default function PatientDetail() {
                                 {step.effectiveDateTime && (
                                   <span className="text-xs text-gray-500">{formatDateTime(step.effectiveDateTime)}</span>
                                 )}
-                                {step.completionStatus && step.completionStatus !== 'ON_TIME' && (
+                                {step.stepStatus === 'COMPLETED' && (step.slaStatus === 'OVERDUE' || step.slaStatus === 'MISSED') && (
                                   <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-amber-700 bg-amber-100">
                                     LATE
                                   </span>
                                 )}
-                                {step.completionStatus === 'ON_TIME' && (
+                                {step.stepStatus === 'COMPLETED' && step.slaStatus === 'MET' && (
                                   <span className="inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold text-green-700 bg-green-100">
                                     ON TIME
                                   </span>
@@ -635,7 +638,7 @@ export default function PatientDetail() {
                                 <tr key={s.stepInstanceId} className="hover:bg-gray-50">
                                   <td className="py-2 pr-4 font-medium text-gray-900">{s.actionId}</td>
                                   <td className="py-2 pr-4">
-                                    <StatusBadge label={s.state} color={STATE_COLORS[s.state as StepState] ?? { bg: 'bg-gray-100', text: 'text-gray-700' }} />
+                                    <StatusBadge label={stepDisplayStatus(s)} color={STATE_COLORS[stepDisplayStatus(s)]} />
                                   </td>
                                   <td className="py-2 pr-4 text-gray-600">{s.dueDate ? formatDate(s.dueDate) : '—'}</td>
                                   <td className="py-2 pr-4 text-gray-600">{s.completedAt ? formatDateTime(s.completedAt) : '—'}</td>

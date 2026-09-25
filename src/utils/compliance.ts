@@ -10,9 +10,11 @@ export function parseCanonicalUrl(canonical: string): { url: string; version: st
 }
 
 export function classifyComplianceCategory(steps: StepInstance[]): 'on_track' | 'non_compliant' {
-  const hasMissed = steps.some((s) => s.state === 'MISSED');
+  // Outstanding steps only: a step completed late keeps its OVERDUE / MISSED verdict.
+  const outstanding = steps.filter((s) => s.stepStatus !== 'COMPLETED');
+  const hasMissed = outstanding.some((s) => s.slaStatus === 'MISSED');
   if (hasMissed) return 'non_compliant';
-  const hasOverdue = steps.some((s) => s.state === 'OVERDUE');
+  const hasOverdue = outstanding.some((s) => s.slaStatus === 'OVERDUE');
   if (hasOverdue) return 'non_compliant';
   return 'on_track';
 }
