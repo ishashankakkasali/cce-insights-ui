@@ -112,6 +112,10 @@
 │         │  │   248    │ │   72%    │ │   180    │ │    270       │         │
 │         │  └──────────┘ └──────────┘ └──────────┘ └──────────────┘         │
 │         │                                                                    │
+│         │  ┌─ Transactions ───────────────────────────────────────────────┐ │
+│         │  │ Total Steps │ Completed │ Not Started │ Overdue │ Missed │ Not Yet Judged │
+│         │  └──────────────────────────────────────────────────────────────┘ │
+│         │                                                                    │
 │         │  ┌─ SERVICE WORKFLOW COMPLIANCE (vertical timeline) ────────────┐  │
 │         │  │                                                              │  │
 │         │  │  ⬤───┌──────────────────────────────────────────────┐       │  │
@@ -223,8 +227,8 @@
 | Action | `actionId` | Step name from PlanDefinition |
 | Completed | `completedCount / totalInstances` | Ratio |
 | Rate | `completionRate` | Percentage bar |
-| On Time | `timelinessDistribution.onTime` | Count |
-| Late | `timelinessDistribution.late` | Count, highlighted amber |
+| On Time | `timelinessDistribution.completedOnTime` | Count (completed + SLA met) |
+| Late | `timelinessDistribution.completedLate` | Count (completed + SLA overdue/missed), highlighted amber |
 | Avg Days | `avgDaysToComplete` | Average days to complete |
 | Median | `medianDaysToComplete` | Median days (tooltip) |
 
@@ -326,6 +330,23 @@
 │         │  └───────────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────────────────────┘
 ```
+
+### Protocol Journey statuses
+
+Every journey step is listed. An untriggered action — `status` `NOT_STARTED` with no `stepStatus` — shows as **Not Started** (gray). A step that exists but is still outstanding with no breached deadline also arrives as `NOT_STARTED`, but with `stepStatus: 'NOT_STARTED'`; the page renders it as **Pending** (blue).
+
+### Timeliness badges
+
+Each completed journey step shows a timeliness badge read from the CCE 2.0.0 status pair:
+
+| `stepStatus` | `slaStatus` | Badge | Color |
+|--------------|-------------|-------|-------|
+| `COMPLETED` | `MET` | **ON TIME** | green |
+| `COMPLETED` | `OVERDUE` / `MISSED` | **LATE** | amber |
+
+A completed step whose `slaStatus` is still null (the verdict lands within one Step SLA cycle, and
+never for an optional step) shows no timeliness badge. 1.x's `EARLY` has no 2.0.0 equivalent — it is
+`MET`.
 
 ---
 
@@ -730,8 +751,8 @@ Props: `label`, `value`, `icon`, `trend?` (up/down/neutral), `trendLabel?`
 
 Unified badge component (`StatusBadge.tsx`) for compliance categories, step states, deviation types, processing status, and protocol statuses. Color-coded pills with consistent styling:
 - Compliance: `on_track` (green), `non_compliant` (red)
-- Step states: PENDING (gray), DUE (blue), OVERDUE (amber), MISSED (red), COMPLETED (green), SKIPPED (slate)
-- Deviation types: `OVERDUE` (amber), `MISSED` (red)
+- Step states: NOT_STARTED (gray), OVERDUE (amber), MISSED (red), COMPLETED (green)
+- Deviation types: `OVERDUE` (amber), `MISSED` (red), `ORDER_VIOLATION` (purple)
 - Processing: `MATCHED` (green), `ZERO_MATCH` (amber), `DUPLICATE` (gray)
 
 ### DateRangeFilter

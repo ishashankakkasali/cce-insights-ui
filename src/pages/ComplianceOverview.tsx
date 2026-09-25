@@ -155,22 +155,25 @@ export default function ComplianceOverview() {
               <h4 className="mb-3 text-xs font-semibold text-gray-500 uppercase">Transactions</h4>
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
                 {(() => {
+                  // 2.0.0: completed / notStarted split steps by whether the work was recorded;
+                  // overdue / missed / unjudged are SLA verdicts, so overdue and missed include
+                  // steps that were completed after the deadline.
                   const completed = data.stepMetrics.completed ?? 0;
-                  const onTime = (data.stepMetrics.onTime ?? 0) + (data.stepMetrics.early ?? 0);
-                  const late = data.stepMetrics.late ?? 0;
-                  const due = data.stepMetrics.due ?? 0;
+                  const onTime = data.stepMetrics.completedOnTime ?? 0;
+                  const late = data.stepMetrics.completedLate ?? 0;
+                  const notStarted = data.stepMetrics.notStarted ?? 0;
                   const overdue = data.stepMetrics.overdue ?? 0;
                   const missed = data.stepMetrics.missed ?? 0;
-                  const pending = data.stepMetrics.pending ?? 0;
+                  const unjudged = data.stepMetrics.slaUnjudged ?? 0;
                   const totalSteps = data.stepMetrics.totalSteps || 1;
 
                   const tiles = [
                     { key: 'total', label: 'Total Steps', value: totalSteps, denom: totalSteps, color: 'bg-gray-500', text: 'text-gray-800', bg: 'bg-gray-50', desc: 'Total applicable steps across all tracked patients.' },
                     { key: 'completed', label: 'Completed', value: completed, denom: totalSteps, color: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', sub: { onTime, late }, desc: 'Steps that have been completed (on time or late).' },
-                    { key: 'due', label: 'Due', value: due, denom: totalSteps, color: 'bg-indigo-500', text: 'text-indigo-700', bg: 'bg-indigo-50', desc: 'Steps that are currently due and within the allowed window.' },
-                    { key: 'overdue', label: 'Overdue', value: overdue, denom: totalSteps, color: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', desc: 'Steps that have exceeded their due date but are not yet missed.' },
-                    { key: 'missed', label: 'Missed', value: missed, denom: totalSteps, color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50', desc: 'Steps that were never completed within the allowed window.' },
-                    { key: 'pending', label: 'Pending', value: pending, denom: totalSteps, color: 'bg-gray-400', text: 'text-gray-700', bg: 'bg-gray-100', desc: 'Steps not yet triggered — waiting for a preceding step to complete.' },
+                    { key: 'notStarted', label: 'Not Started', value: notStarted, denom: totalSteps, color: 'bg-indigo-500', text: 'text-indigo-700', bg: 'bg-indigo-50', desc: 'Steps whose expected event has not been recorded yet, whether or not their due date has passed.' },
+                    { key: 'overdue', label: 'Overdue', value: overdue, denom: totalSteps, color: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', desc: 'Steps that passed their due date before being recorded — still outstanding, or completed late — and are not yet missed.' },
+                    { key: 'missed', label: 'Missed', value: missed, denom: totalSteps, color: 'bg-rose-500', text: 'text-rose-700', bg: 'bg-rose-50', desc: 'Steps written off after the allowed window — never recorded, or recorded after the write-off.' },
+                    { key: 'unjudged', label: 'Not Yet Judged', value: unjudged, denom: totalSteps, color: 'bg-gray-400', text: 'text-gray-700', bg: 'bg-gray-100', desc: 'Steps with no timeliness verdict yet — no deadline has fallen due. Optional steps have no deadline, so they stay here.' },
                   ];
 
                   return tiles.map(({ key, label, value, denom, color, text, bg, sub, desc }) => {
