@@ -1,4 +1,5 @@
 import { apiGet, apiGetPaginated } from './client';
+import { toLocalDateParam } from '../utils/dates';
 import type {
   FacilityRanking, RankBy, SortOrder,
   FacilityActivitySummary, FacilityActivityItem, FacilityReference, AdoptionKpi,
@@ -11,8 +12,8 @@ export function getFacilityActivitySummary(params?: {
   district?: string;
 }): Promise<FacilityActivitySummary> {
   return apiGet('/facilities/activity-summary', {
-    startDate: params?.startDate ? params.startDate.substring(0, 10) : undefined,
-    endDate:   params?.endDate   ? params.endDate.substring(0, 10)   : undefined,
+    startDate: toLocalDateParam(params?.startDate),
+    endDate:   toLocalDateParam(params?.endDate),
     facilityId: params?.facilityId,
     district: params?.district,
   });
@@ -28,14 +29,14 @@ export function getFacilityActivityDetail(params?: {
   district?: string;
 }): Promise<FacilityActivityItem[]> {
   return apiGet('/facilities/activity-detail', {
-    startDate: params?.startDate ? params.startDate.substring(0, 10) : undefined,
-    endDate:   params?.endDate   ? params.endDate.substring(0, 10)   : undefined,
+    startDate: toLocalDateParam(params?.startDate),
+    endDate:   toLocalDateParam(params?.endDate),
     district: params?.district,
   });
 }
 
 // The adoption endpoint accepts plain LocalDate (YYYY-MM-DD), not ISO datetime.
-// Extract the date portion from the ISO strings the global filters provide.
+// Convert the ISO strings the global filters provide to the selected calendar date.
 export function getAdoptionKpis(params?: {
   startDate?: string;
   endDate?: string;
@@ -43,8 +44,8 @@ export function getAdoptionKpis(params?: {
   district?: string;
 }): Promise<AdoptionKpi[]> {
   return apiGet('/facilities/adoption', {
-    startDate: params?.startDate ? params.startDate.substring(0, 10) : undefined,
-    endDate:   params?.endDate   ? params.endDate.substring(0, 10)   : undefined,
+    startDate: toLocalDateParam(params?.startDate),
+    endDate:   toLocalDateParam(params?.endDate),
     facilityId: params?.facilityId,
     district: params?.district,
   });
@@ -67,8 +68,8 @@ export function getFacilityRanking(params?: {
     district: params?.district,
     rankBy: params?.rankBy,
     order: params?.order,
-    startDate: params?.startDate ? params.startDate.substring(0, 10) : undefined,
-    endDate: params?.endDate ? params.endDate.substring(0, 10) : undefined,
+    startDate: toLocalDateParam(params?.startDate),
+    endDate: toLocalDateParam(params?.endDate),
     limit: params?.limit?.toString(),
     cursor: params?.cursor,
   });

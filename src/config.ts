@@ -35,3 +35,25 @@ export const COMPLIANCE_STATUS_OPTIONS = [
   { value: 'on_track', label: 'Compliant' },
   { value: 'non_compliant', label: 'Non-Compliant' },
 ] as const;
+
+/**
+ * Resolve the IANA timezone (e.g. "Africa/Kigali") used to display API timestamps and to
+ * interpret the user's selected dates. Falls back to UTC when unset or not a valid zone name.
+ */
+export function resolveTimeZone(raw: string | undefined): string {
+  const tz = raw?.trim();
+  if (!tz) return 'UTC';
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: tz });
+    return tz;
+  } catch {
+    console.warn(`Invalid VITE_TIMEZONE "${tz}"; falling back to UTC`);
+    return 'UTC';
+  }
+}
+
+/**
+ * Display timezone. The insights-service stores and accepts UTC only: API timestamps are shown
+ * in this zone, and the selected date range is converted from this zone to UTC before it is sent.
+ */
+export const APP_TIMEZONE = resolveTimeZone(import.meta.env.VITE_TIMEZONE);

@@ -101,6 +101,7 @@ baked per environment. Set them in `.env` for `npm run build`, or as build args 
 | `VITE_ROUTER_BASE` | `/` (dev) | SPA router base path. The Docker image bakes `/insights` (served under that path by the ingress) |
 | `VITE_POLLING_INTERVAL` | `60000` | Dashboard auto-refresh interval (ms) |
 | `VITE_DEFAULT_DATE_RANGE_DAYS` | `90` | Default date range filter |
+| `VITE_TIMEZONE` | `UTC` | IANA display timezone (e.g. `Africa/Kigali`). API timestamps are shown in this zone, and the selected date range is converted from it to UTC before being sent (the insights-service is UTC only). Invalid names fall back to UTC |
 
 ### Caddy Configuration
 

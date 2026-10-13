@@ -1570,6 +1570,15 @@ export function useGlobalFilters(): GlobalFilters {
 > **Note:** The hook converts YYYY-MM-DD date strings from the FilterContext to ISO 8601 OffsetDateTime
 > format (`2026-03-01T00:00:00Z` / `2026-03-31T23:59:59Z`) required by the Insights Service.
 >
+> **Timezone (`VITE_TIMEZONE`, default `UTC`).** The Insights Service is UTC-only. The selected days
+> are interpreted in the configured IANA zone and converted to UTC (`toStartOfDayISO` /
+> `toEndOfDayISO`), so with `Africa/Kigali` (UTC+2) a `2026-06-22` filter is sent as
+> `2026-06-21T22:00:00Z` – `2026-06-22T21:59:59Z`. API timestamps are rendered in that same zone at
+> display time (`formatDate` / `formatDateTime`); response payloads are not rewritten. Limits:
+> `LocalDate` endpoints (`/facilities/*`) cannot carry a zone, so they receive the selected calendar
+> date (`toLocalDateParam`), and trend `period` buckets are UTC `yyyy-MM-dd` days chosen by the
+> service, so they are shown as returned.
+>
 > `FilterContext` carries `startDate`/`endDate`/`facilityId`/`district`. The enrollment-vs-activity
 > `dateFilterMode` is **not** a global filter — it is a per-query param on `getProtocolPatients` /
 > `useProtocolPatients` (§3.1, §4.1), driven by a local radio on the Patient List page.
