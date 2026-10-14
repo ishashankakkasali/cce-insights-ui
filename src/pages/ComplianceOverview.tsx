@@ -8,18 +8,22 @@ import { useProtocolComplianceSummary } from '../hooks/useComplianceSummary';
 import { useStepAnalytics, useActionOrder } from '../hooks/useProtocols';
 import { useProtocols, useFacilityLookup } from '../hooks/useLookups';
 import { formatNumber, formatRate } from '../utils/formatters';
+import { buildWorkflowTree, countDescendants, type WorkflowNode } from '../utils/serviceWorkflow';
+
+type StepRow = { actionId: string; totalInstances: number; completedCount: number };
 
 /* Collapsible sub-actions panel for the Service Workflow Compliance timeline */
 function SubActionsPanel({
-  children,
+  nodes,
   denominators,
   titleMap,
 }: {
-  children: { actionId: string; totalInstances: number; completedCount: number }[];
+  nodes: WorkflowNode<StepRow>[];
   denominators: Map<string, number>;
   titleMap: Map<string, string | null>;
 }) {
   const [open, setOpen] = useState(true);
+  const total = nodes.reduce((n, c) => n + 1 + countDescendants(c), 0);
 
   return (
     <div className="mt-3 border-t border-gray-100 pt-3">
@@ -38,42 +42,58 @@ function SubActionsPanel({
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
         </svg>
         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
-          Sub-actions ({children.length})
+          Sub-actions ({total})
         </span>
       </button>
-      {open && (
-        <div className="relative ml-2 mt-2">
-          {/* Sub-action connector line */}
-          <div className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200" />
-          {children.map((child) => {
-            const childDenom = denominators.get(child.actionId) ?? child.totalInstances;
-            const childPct = childDenom > 0 ? Math.min(Math.round((child.completedCount / childDenom) * 100), 100) : 0;
-            const childLabel = titleMap.get(child.actionId) || child.actionId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-            const childBarColor = childPct >= 80 ? 'bg-green-500' : childPct >= 50 ? 'bg-amber-500' : 'bg-red-400';
-            const childDotColor = childPct >= 80 ? 'bg-green-500' : childPct >= 50 ? 'bg-amber-500' : 'bg-red-400';
-            const childPctColor = childPct >= 80 ? 'text-green-700' : childPct >= 50 ? 'text-amber-700' : 'text-red-700';
+      {open && <SubActionList nodes={nodes} denominators={denominators} titleMap={titleMap} />}
+    </div>
+  );
+}
 
-            return (
-              <div key={child.actionId} className="relative flex items-start gap-3 py-1.5 pl-5">
-                {/* Sub-action dot */}
-                <div className={`absolute left-[2px] top-[10px] h-[8px] w-[8px] rounded-full ${childDotColor} ring-2 ring-white`} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between">
-                    <p className="text-[11px] font-medium text-gray-700">{childLabel}</p>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-[11px] font-bold ${childPctColor}`}>{childPct}%</span>
-                      <span className="text-[10px] text-gray-400">{child.completedCount}/{childDenom}</span>
-                    </div>
-                  </div>
-                  <div className="mt-0.5 h-1 w-4/5 overflow-hidden rounded-full bg-gray-100">
-                    <div className={`h-full rounded-full ${childBarColor}`} style={{ width: `${childPct}%` }} />
-                  </div>
+/* One level of sub-action rows; each row renders its own sub-actions nested below it, to any depth */
+function SubActionList({
+  nodes,
+  denominators,
+  titleMap,
+}: {
+  nodes: WorkflowNode<StepRow>[];
+  denominators: Map<string, number>;
+  titleMap: Map<string, string | null>;
+}) {
+  return (
+    <div className="relative ml-2 mt-2">
+      {/* Sub-action connector line */}
+      <div className="absolute left-[5px] top-2 bottom-2 w-px bg-gray-200" />
+      {nodes.map(({ step: child, children }) => {
+        const childDenom = denominators.get(child.actionId) ?? child.totalInstances;
+        const childPct = childDenom > 0 ? Math.min(Math.round((child.completedCount / childDenom) * 100), 100) : 0;
+        const childLabel = titleMap.get(child.actionId) || child.actionId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+        const childBarColor = childPct >= 80 ? 'bg-green-500' : childPct >= 50 ? 'bg-amber-500' : 'bg-red-400';
+        const childDotColor = childPct >= 80 ? 'bg-green-500' : childPct >= 50 ? 'bg-amber-500' : 'bg-red-400';
+        const childPctColor = childPct >= 80 ? 'text-green-700' : childPct >= 50 ? 'text-amber-700' : 'text-red-700';
+
+        return (
+          <div key={child.actionId} className="relative py-1.5 pl-5">
+            {/* Sub-action dot */}
+            <div className={`absolute left-[2px] top-[10px] h-[8px] w-[8px] rounded-full ${childDotColor} ring-2 ring-white`} />
+            <div className="min-w-0">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] font-medium text-gray-700">{childLabel}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-[11px] font-bold ${childPctColor}`}>{childPct}%</span>
+                  <span className="text-[10px] text-gray-400">{child.completedCount}/{childDenom}</span>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      )}
+              <div className="mt-0.5 h-1 w-4/5 overflow-hidden rounded-full bg-gray-100">
+                <div className={`h-full rounded-full ${childBarColor}`} style={{ width: `${childPct}%` }} />
+              </div>
+            </div>
+            {children.length > 0 && (
+              <SubActionList nodes={children} denominators={denominators} titleMap={titleMap} />
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -262,22 +282,19 @@ export default function ComplianceOverview() {
                     }
                   }
 
-                  // Group into top-level and children
-                  const topLevel = sortedSteps.filter((s) => !parentMap.get(s.actionId));
-                  const childrenOf = (parentId: string) =>
-                    sortedSteps.filter((s) => parentMap.get(s.actionId) === parentId);
+                  // Nest steps to any depth (protocols may chain steps several levels deep)
+                  const tree = buildWorkflowTree(sortedSteps, order);
 
                   return (
                     <div className="space-y-0 relative">
                       {/* Vertical connector line */}
                       <div className="absolute left-[11px] top-6 bottom-6 w-0.5 bg-gray-200" />
 
-                      {topLevel.map((step) => {
+                      {tree.map(({ step, children }) => {
                         const denom = denominators.get(step.actionId) ?? step.totalInstances;
                         const pct = denom > 0 ? Math.min(Math.round((step.completedCount / denom) * 100), 100) : 0;
                         const missing = Math.max(denom - step.completedCount, 0);
                         const label = titleMap.get(step.actionId) || step.actionId.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-                        const children = childrenOf(step.actionId);
                         const barColor = pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-500';
                         const pctColor = pct >= 80 ? 'text-green-700' : pct >= 50 ? 'text-amber-700' : 'text-red-700';
                         const dotColor = pct >= 80 ? 'bg-green-500' : pct >= 50 ? 'bg-amber-500' : 'bg-red-400';
@@ -309,7 +326,7 @@ export default function ComplianceOverview() {
 
                               {/* Collapsible child steps as sub-timeline nodes */}
                               {children.length > 0 && (
-                                <SubActionsPanel children={children} denominators={denominators} titleMap={titleMap} />
+                                <SubActionsPanel nodes={children} denominators={denominators} titleMap={titleMap} />
                               )}
                             </div>
                           </div>
