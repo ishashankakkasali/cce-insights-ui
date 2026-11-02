@@ -15,9 +15,10 @@ export function useDashboardOverview() {
 }
 
 export function useDashboardComplianceSummary() {
+  const filters = useGlobalFilters();
   return useQuery({
-    queryKey: ['dashboard', 'compliance-summary'],
-    queryFn: () => getDashboardComplianceSummary(),
+    queryKey: ['dashboard', 'compliance-summary', filters.startDate, filters.endDate],
+    queryFn: () => getDashboardComplianceSummary(filters),
     refetchInterval: POLLING_INTERVAL,
   });
 }
