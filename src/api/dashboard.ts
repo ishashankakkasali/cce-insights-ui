@@ -55,6 +55,12 @@ export function getDashboardOverview(params?: {
   return apiGet('/dashboard/overview', params);
 }
 
-export function getDashboardComplianceSummary(): Promise<DashboardComplianceSummary> {
-  return apiGet('/dashboard/compliance-summary');
+export function getDashboardComplianceSummary(params?: {
+  startDate?: string;
+  endDate?: string;
+}): Promise<DashboardComplianceSummary> {
+  return apiGet('/dashboard/compliance-summary', {
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+  });
 }

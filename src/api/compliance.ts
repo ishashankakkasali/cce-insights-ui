@@ -4,6 +4,8 @@ import type { ComplianceSummary, FacilitySummary, PatientCompliance, GlobalFilte
 export function getAllProtocolsComplianceSummary(filters?: GlobalFilters): Promise<ComplianceSummary> {
   return apiGet('/protocols/compliance-summary', {
     facilityId: filters?.facilityId,
+    startDate: filters?.startDate,
+    endDate: filters?.endDate,
   });
 }
 
