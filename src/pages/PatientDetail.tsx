@@ -5,7 +5,7 @@ import { Card } from '../components/shared/Card';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
 import { ErrorAlert } from '../components/shared/ErrorAlert';
 import { StatusBadge } from '../components/shared/StatusBadge';
-import { usePatientTimeline, usePatientProtocolTracking, usePatientProtocolTrackingDetail, usePatientDeviations } from '../hooks/usePatients';
+import { usePatientTimeline, usePatientProtocolTracking, usePatientProtocolTrackingDetail, usePatientDeviations, usePatientIntelligenceAlerts } from '../hooks/usePatients';
 import { formatDate, formatDateTime } from '../utils/dates';
 import { formatPercentage } from '../utils/formatters';
 import { STATUS_COLORS, STATE_COLORS } from '../utils/colors';
@@ -75,6 +75,35 @@ function isReferralInitiated(step: JourneyStep): boolean {
 function isReferralClosed(step: JourneyStep): boolean {
   const actionId = step.actionId?.toLowerCase() ?? '';
   return actionId.includes('referral') && actionId.includes('ack') && step.status === 'COMPLETED';
+}
+
+// Why an intelligence alert fired (the event's trigger reason).
+function alertTriggerStyle(triggerReason?: string): { label: string; className: string } {
+  switch ((triggerReason ?? '').toLowerCase()) {
+    case 'completion': return { label: '✓ STEP COMPLETED', className: 'text-blue-600' };
+    case 'overdue': return { label: '⚠ OVERDUE', className: 'text-amber-600' };
+    case 'missed': return { label: '🔴 MISSED', className: 'text-red-600' };
+    case 'order_violation': return { label: '🔀 OUT OF ORDER', className: 'text-purple-600' };
+    default: return { label: (triggerReason || 'ALERT').toUpperCase(), className: 'text-gray-600' };
+  }
+}
+
+// Whether the alert reached its destination, in plain words (the delivery status). The technical
+// detail (HTTP status, error, attempts) stays in the API for ops views.
+function alertStatusStyle(status?: string): { label: string; dateLabel: string; className: string } {
+  switch ((status ?? '').toUpperCase()) {
+    case 'DELIVERED': return { label: '✓ Sent', dateLabel: 'Sent', className: 'bg-green-50 text-green-700 ring-green-200' };
+    case 'FAILED': return { label: '✕ Not sent', dateLabel: 'Not sent', className: 'bg-red-50 text-red-700 ring-red-200' };
+    default: return { label: 'Sending…', dateLabel: 'Queued', className: 'bg-gray-50 text-gray-600 ring-gray-200' };
+  }
+}
+
+// A routing code as words: PATIENT_APP → "Patient App"; single-word codes (often system names) stay as they are.
+function destinationLabel(destination?: string): string | undefined {
+  if (!destination || !destination.includes('_')) return destination;
+  return destination.split('_').filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(' ');
 }
 
 function ReferralTable({ title, steps, emptyLabel }: { title: string; steps: JourneyStep[]; emptyLabel: string }) {
@@ -179,6 +208,7 @@ export default function PatientDetail() {
   const tracking = usePatientProtocolTracking(patientId);
   const timeline = usePatientTimeline(patientId);
   const deviations = usePatientDeviations(patientId, { skipDateFilter: true });
+  const alerts = usePatientIntelligenceAlerts(patientId);
   const detail = usePatientProtocolTrackingDetail(patientId, showStepDetails ? selectedProtocolInstanceId ?? '' : '');
 
   // Whichever protocol the user came here for (clicked from the Patient
@@ -369,6 +399,7 @@ export default function PatientDetail() {
               const journeySteps = proto.journey ?? [];
               const completedCount = journeySteps.filter((s) => s.status === 'COMPLETED').length;
               const protoDeviations = (deviations.data ?? []).filter((d) => d.protocolInstanceId === proto.protocolInstanceId);
+              const protoAlerts = (alerts.data ?? []).filter((a) => a.protocolInstanceId === proto.protocolInstanceId);
               const protoOutbound = journeySteps.filter(isReferralInitiated);
               const protoInbound = journeySteps.filter(isReferralClosed);
               const hasReferralEvents = protoOutbound.length > 0 || protoInbound.length > 0;
@@ -562,22 +593,29 @@ export default function PatientDetail() {
 
                         <div className="mt-4 md:mt-0 md:pl-4">
                           <h4 className="mb-2 text-xs font-semibold uppercase text-gray-500">Intelligence Alerts</h4>
-                          {protoDeviations.length > 0 ? (
+                          {protoAlerts.length > 0 ? (
                             <div className="space-y-2">
-                              {protoDeviations.map((d) => (
-                                <div key={`alert-${d.deviationId}`} className="rounded-lg border border-gray-200 p-3">
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className={`text-xs font-bold ${d.deviationType === 'OVERDUE' ? 'text-amber-600' : d.deviationType === 'ORDER_VIOLATION' ? 'text-purple-600' : 'text-red-600'}`}>
-                                      {d.deviationType === 'OVERDUE' ? '⚠' : d.deviationType === 'ORDER_VIOLATION' ? '🔀' : '🔴'} {d.deviationType}
-                                    </span>
-                                    <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-200 flex-shrink-0">
-                                      ✓ Notification Sent
-                                    </span>
+                              {protoAlerts.map((a) => {
+                                const trigger = alertTriggerStyle(a.triggerReason);
+                                const delivery = alertStatusStyle(a.status);
+                                return (
+                                  <div key={`alert-${a.deliveryId}`} className="rounded-lg border border-gray-200 p-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className={`text-xs font-bold ${trigger.className}`}>{trigger.label}</span>
+                                      <span className={`inline-flex flex-shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${delivery.className}`}>
+                                        {delivery.label}
+                                      </span>
+                                    </div>
+                                    <p className="mt-1 text-sm font-medium text-gray-900">{a.alertTitle || a.alertActionId || 'Intelligence alert'}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {[a.stepName, a.destination && `to ${destinationLabel(a.destination)}`].filter(Boolean).join(' · ')}
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {delivery.dateLabel}: {formatDateTime(a.status === 'DELIVERED' && a.deliveredAt ? a.deliveredAt : a.createdAt)}
+                                    </p>
                                   </div>
-                                  <p className="mt-1 text-sm font-medium text-gray-900">{d.description || d.stepName || d.actionId || 'Unknown Step'}</p>
-                                  <p className="text-xs text-gray-500">Detected: {formatDate(d.detectedAt)}</p>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <p className="py-3 text-center text-xs text-gray-400">No alerts found.</p>

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   getPatientTimeline, getPatientProtocolTracking,
-  getPatientProtocolTrackingDetail, getPatientEvents, getPatientDeviations,
+  getPatientProtocolTrackingDetail, getPatientEvents, getPatientDeviations, getPatientIntelligenceAlerts,
   getAtRiskHotspots, getRepeatDeviations,
 } from '../api/patients';
 import { useGlobalFilters } from './useGlobalFilters';
@@ -47,6 +47,15 @@ export function usePatientDeviations(patientId: string, params?: { deviationType
   return useQuery({
     queryKey: ['patients', 'deviations', patientId, { ...restParams, ...effectiveFilters }],
     queryFn: () => getPatientDeviations(patientId, { ...restParams, ...effectiveFilters }),
+    enabled: !!patientId,
+  });
+}
+
+// Not date-filtered: like the journey and its deviations, the alerts belong to the whole enrolment.
+export function usePatientIntelligenceAlerts(patientId: string) {
+  return useQuery({
+    queryKey: ['patients', 'intelligence-alerts', patientId],
+    queryFn: () => getPatientIntelligenceAlerts(patientId),
     enabled: !!patientId,
   });
 }

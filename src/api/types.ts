@@ -238,6 +238,34 @@ export interface PatientDeviation {
 
 export type DeviationType = 'OVERDUE' | 'MISSED' | 'ORDER_VIOLATION';
 
+/** One intelligence delivery for a patient: what fired, why, where it went and whether it arrived. */
+export interface PatientIntelligenceAlert {
+  deliveryId: string;
+  intelligenceEventId: string;
+  protocolInstanceId: string;
+  protocolCanonical?: string;
+  stepInstanceId?: string;
+  /** The protocol step the alert belongs to. */
+  actionId?: string;
+  stepName?: string;
+  /** The intelligence action that fired. */
+  alertActionId?: string;
+  alertTitle?: string;
+  /** Why it fired, e.g. completion or overdue. */
+  triggerReason?: string;
+  slaStatus?: string;
+  destination?: string;
+  resourceType?: string;
+  severity?: string;
+  /** Delivery status, e.g. PENDING, DELIVERED or FAILED. */
+  status: string;
+  attemptCount: number;
+  httpStatusCode?: number;
+  errorMessage?: string;
+  createdAt: string;
+  deliveredAt?: string;
+}
+
 // ─── Deviations & Intelligence ───────────────────────────────
 
 export interface DeviationRecord {
