@@ -17,10 +17,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// The app is served under a base path (e.g. /insights) by the ingress, so the router must
+// resolve routes relative to it: /insights -> Dashboard, /insights/compliance -> Compliance.
+// Defaults to '/' for local dev (vite serves at the root); the Docker image sets /insights.
+const routerBase = import.meta.env.VITE_ROUTER_BASE || '/';
+
 function render() {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <BrowserRouter>
+      <BrowserRouter basename={routerBase}>
         <QueryClientProvider client={queryClient}>
           <FilterProvider>
             <App />

@@ -55,7 +55,23 @@ jobs:
         echo "Version tag for this build: ${VERSION_TAG}"
 
     - name: Build container image
-      run: docker build -t ${IMAGE_URI}:${{ steps.version.outputs.version_tag }} .
+      # Bake the config the k8s deployment relies on (see the Dockerfile ARGs):
+      #   - VITE_ROUTER_BASE=/insights: the ingress serves the UI under /insights; it sets both the asset
+      #     base and the router base and is build-time only. Without it the page loads /assets/... -> 404 ->
+      #     blank screen.
+      #   - VITE_AUTH_ENABLED=true: OIDC login, so /v1/insights calls carry a Bearer token for the gateway.
+      #     The Keycloak URL is left empty: it is derived at runtime from the browser origin (<origin>/auth),
+      #     so one image works on every environment.
+      # Each value can be overridden with a repo/org Actions variable of the same name.
+      run: |
+        docker build \
+          --build-arg VITE_AUTH_ENABLED="${{ vars.VITE_AUTH_ENABLED || 'true' }}" \
+          --build-arg VITE_KEYCLOAK_URL="${{ vars.VITE_KEYCLOAK_URL || '' }}" \
+          --build-arg VITE_KEYCLOAK_REALM="${{ vars.VITE_KEYCLOAK_REALM || 'cce' }}" \
+          --build-arg VITE_KEYCLOAK_CLIENT_ID="${{ vars.VITE_KEYCLOAK_CLIENT_ID || 'cce-insights-ui' }}" \
+          --build-arg VITE_ROUTER_BASE="${{ vars.VITE_ROUTER_BASE || '/insights' }}" \
+          --build-arg VITE_TIMEZONE="${{ vars.VITE_TIMEZONE || 'UTC' }}" \
+          -t ${IMAGE_URI}:${{ steps.version.outputs.version_tag }} .
 
     - name: Tag image as latest
       run: docker tag ${IMAGE_URI}:${{ steps.version.outputs.version_tag }} ${IMAGE_URI}:${LATEST_TAG}

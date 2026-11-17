@@ -7,11 +7,28 @@
 		reverse_proxy gateway-service:8090
 	}
 
-	# Serve the built React SPA with SPA fallback
-	handle {
+	# The SPA is served under /insights (assets live at /insights/assets/*). Strip the prefix so
+	# requests resolve against the build output in /srv — this lets the single /insights ingress
+	# rule cover both the app and its assets (no separate /assets rule needed).
+	handle_path /insights/* {
 		root * /srv
 
 		# Cache static assets aggressively (hashed filenames)
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+
+		# Runtime config is regenerated at every container start — never cache it.
+		@envconfig path /env-config.js
+		header @envconfig Cache-Control "no-cache"
+
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Fallback for requests without the /insights prefix (bare /insights, health checks, etc.)
+	handle {
+		root * /srv
+
 		@assets path /assets/*
 		header @assets Cache-Control "public, max-age=31536000, immutable"
 
