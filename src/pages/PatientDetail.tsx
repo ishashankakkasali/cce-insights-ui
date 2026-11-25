@@ -587,15 +587,25 @@ export default function PatientDetail() {
                             className="relative flex gap-3 py-2.5"
                             style={{ paddingLeft: `${depth * 24}px` }}
                           >
-                            {/* A line down the side of a group's steps, one per enclosing group */}
+                            {/* A line down the side of a group's steps, one per enclosing group: 2px wide, centred on the
+                                group's 16px arrow (8px in), so it carries on the line drawn below that arrow */}
                             {enclosingGroupDepths.map((g) => (
                               <div
                                 key={`rail-${g}`}
                                 aria-hidden="true"
-                                className="pointer-events-none absolute inset-y-0 w-0.5 rounded bg-indigo-200"
-                                style={{ left: `${g * 24 + 6}px` }}
+                                className="pointer-events-none absolute inset-y-0 w-0.5 bg-indigo-200"
+                                style={{ left: `${g * 24 + 7}px` }}
                               />
                             ))}
+                            {step.group && !collapsed && (
+                              // An open group's line: from below its arrow (10px padding + 2px + 16px arrow + 4px) to
+                              // the bottom of its row, where its steps' line carries on
+                              <div
+                                aria-hidden="true"
+                                className="pointer-events-none absolute bottom-0 w-0.5 rounded-t bg-indigo-200"
+                                style={{ left: `${depth * 24 + 7}px`, top: '32px' }}
+                              />
+                            )}
                             <div className="relative flex flex-col items-center">
                               {step.group ? (
                                 // A group has no event of its own: an expand / collapse arrow, not a status dot
@@ -615,7 +625,9 @@ export default function PatientDetail() {
                               ) : (
                                 <div className={`mt-1 ${isSubStep ? 'h-3 w-3' : 'h-3.5 w-3.5'} rounded-full ${info.dot}`} />
                               )}
-                              {i < arr.length - 1 && <div className="w-px flex-1 bg-gray-200" />}
+                              {!(step.group && !collapsed) && i < arr.length - 1 && (
+                                <div className="w-px flex-1 bg-gray-200" />
+                              )}
                             </div>
                             <div className="relative min-w-0 pb-1 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
