@@ -84,15 +84,49 @@ describe('PatientDetail — step groups in the Protocol Journey', () => {
   it('shows a group as a step group, with each of its visits and how many steps are done', () => {
     renderPage();
     const visitRow = screen.getByText('Visit').parentElement!.parentElement!;
-    expect(within(visitRow).getByText('Step group')).toBeInTheDocument();
     // Each is named by its number and the day it opened.
     expect(within(visitRow).getByText('#1 · Nov 2, 2026')).toBeInTheDocument();
     expect(within(visitRow).getByText('#2 · Nov 3, 2026')).toBeInTheDocument();
     expect(within(visitRow).getByText('· 2/2 steps')).toBeInTheDocument();
     expect(within(visitRow).getByText('· 1/2 steps')).toBeInTheDocument();
-    // The row shows the latest visit, which is open, and so does its chip.
-    expect(within(visitRow).getByText('In progress')).toBeInTheDocument();
+    // Its status is in the chip of the latest visit, which is open: the row has no status badge of its own.
     expect(within(visitRow).getByText('· In progress')).toBeInTheDocument();
+    expect(within(visitRow).queryByText('In progress')).not.toBeInTheDocument();
+  });
+
+  it('starts with every group expanded, and a group has an arrow rather than a status dot', () => {
+    renderPage();
+    const arrow = screen.getByTitle('Hide its steps');
+    expect(arrow).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.getByText('Blood Pressure')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Its steps')).not.toBeInTheDocument();
+  });
+
+  it('hides a collapsed group\'s steps and shows a dot per step, and shows them again when expanded', () => {
+    renderPage();
+    fireEvent.click(screen.getByTitle('Hide its steps'));
+
+    expect(screen.getByTitle('Show its steps')).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    expect(screen.queryByText('Blood Pressure')).not.toBeInTheDocument();
+    const dots = screen.getByLabelText('Its steps');
+    // Visit #2 is shown: history done, blood pressure still awaited.
+    expect(within(dots).getByTitle('History: Completed')).toBeInTheDocument();
+    expect(within(dots).getByTitle(/^Blood Pressure: /)).toBeInTheDocument();
+    expect(screen.getByText('Show 2 steps')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('Show 2 steps'));
+    expect(screen.getByText('History')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Its steps')).not.toBeInTheDocument();
+  });
+
+  it('collapses and expands every group at once', () => {
+    renderPage();
+    fireEvent.click(screen.getByText('Collapse all'));
+    expect(screen.queryByText('History')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Expand all'));
+    expect(screen.getByText('History')).toBeInTheDocument();
   });
 
   it('shows the latest visit\'s steps first, and another visit\'s steps when its chip is picked', () => {

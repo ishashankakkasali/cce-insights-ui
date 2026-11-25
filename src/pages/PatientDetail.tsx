@@ -1,5 +1,6 @@
 import { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/20/solid';
 import { PageHeader } from '../components/shared/PageHeader';
 import { Card } from '../components/shared/Card';
 import { LoadingSpinner } from '../components/shared/LoadingSpinner';
@@ -179,6 +180,8 @@ function ReferralTable({ title, steps, emptyLabel }: { title: string; steps: Jou
 export default function PatientDetail() {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  // The step groups the user collapsed in the Protocol Journey (every group starts expanded)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const requestedProtocolInstanceId = searchParams.get('protocolInstanceId');
   const patientId = id ?? '';
   const [selectedProtocolInstanceId, setSelectedProtocolInstanceId] = useState<string | null>(null);
@@ -423,6 +426,13 @@ export default function PatientDetail() {
               const hasReferralEvents = protoOutbound.length > 0 || protoInbound.length > 0;
               // One cycle of each step group at a time: the picked one, else the latest.
               const cycleView = showCycles(journeySteps, cycleSelection);
+              const groupRows = cycleView.steps.filter((r) => r.group);
+              const isCollapsed = (row: JourneyStep) => !!row.group && collapsedGroups.has(row.actionId);
+              const toggleGroup = (row: JourneyStep) => setCollapsedGroups((current) => {
+                const next = new Set(current);
+                if (!next.delete(row.actionId)) next.add(row.actionId);
+                return next;
+              });
               const coversSeveralVisits = journeySteps.some((s) => (s.groupInstances?.length ?? 0) > 1);
 
               // The actions to mark with a deviation: the step that is late or missed, and the
@@ -512,16 +522,28 @@ export default function PatientDetail() {
                       <span className="text-xs text-gray-600">Required step (must)</span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium bg-indigo-100 text-indigo-700">
-                        Step group
+                      <ChevronDownIcon className="h-3.5 w-3.5 text-indigo-600" aria-hidden="true" />
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-indigo-700">Step group</span>
+                      <span className="text-xs text-gray-600">
+                        Steps that belong together, such as a visit. Collapse it to see a dot per step.
                       </span>
-                      <span className="text-xs text-gray-600">Steps that belong together, such as a visit</span>
                     </div>
                   </div>
 
                   {deviations.isLoading && <div className="mb-3"><LoadingSpinner /></div>}
                   {deviations.error && <div className="mb-3"><ErrorAlert error={deviations.error} /></div>}
 
+                  {groupRows.length > 0 && (
+                    <div className="mb-2 flex justify-end gap-3 text-xs">
+                      <button type="button" className="text-indigo-600 hover:underline" onClick={() => setCollapsedGroups(new Set())}>
+                        Expand all
+                      </button>
+                      <button type="button" className="text-indigo-600 hover:underline"
+                        onClick={() => setCollapsedGroups(new Set(groupRows.map((r) => r.actionId)))}>
+                        Collapse all
+                      </button>
+                    </div>
+                  )}
                   <div className="space-y-6">
                     <div className="space-y-0">
                       {cycleView.steps.map((step, i, arr) => {
@@ -539,34 +561,104 @@ export default function PatientDetail() {
                         const isNotStarted = displayStatus === 'NOT_STARTED';
                         const isOutstandingMandatory = step.requiredBehavior === 'must' && !isDeviation
                           && displayStatus !== 'COMPLETED';
+                        // The groups this row sits in: a group's steps follow it, one level deeper
+                        const enclosing = enclosingGroups(arr, i);
+                        const enclosingGroupDepths = enclosing.map((r) => r.depth ?? 0);
+                        // A step of a collapsed group is hidden
+                        if (enclosing.some(isCollapsed)) return null;
+                        const collapsed = isCollapsed(step);
+                        // A collapsed group shows its steps as small status dots, split by the groups nested in it
+                        const dotSegments: { name: string | null; rows: JourneyStep[] }[] = [];
+                        if (collapsed) {
+                          const end = arr.findIndex((r, j) => j > i && (r.depth ?? 0) <= depth);
+                          for (let j = i + 1; j < (end < 0 ? arr.length : end); j++) {
+                            if (arr[j].group) continue;
+                            // the outermost group between this one and the step, if any
+                            const inner = enclosingGroups(arr, j).filter((g) => (g.depth ?? 0) > depth).pop();
+                            const name = inner?.stepName ?? null;
+                            const last = dotSegments[dotSegments.length - 1];
+                            if (last && last.name === name) last.rows.push(arr[j]);
+                            else dotSegments.push({ name, rows: [arr[j]] });
+                          }
+                        }
+                        const groupInstance = step.group ? cycleView.shownInstances.get(step.actionId) : undefined;
 
                         return (
                           <div
                             key={`${proto.protocolInstanceId}-j-${i}`}
-                            className={`flex gap-3 py-2.5 ${
+                            className={`relative flex gap-3 py-2.5 ${
                               isDeviation ? 'rounded-lg bg-red-50 border border-red-200'
                                 : isOutstandingMandatory ? 'rounded-lg bg-purple-50 border border-purple-100'
                                 : ''
                             }`}
                             style={{ paddingLeft: `${depth * 24}px` }}
                           >
-                            <div className="flex flex-col items-center">
-                              {isNotStarted ? (
+                            {/* A line down the side of a group's steps, one per enclosing group */}
+                            {enclosingGroupDepths.map((g) => (
+                              <div
+                                key={`rail-${g}`}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute inset-y-0 w-0.5 rounded bg-indigo-200"
+                                style={{ left: `${g * 24 + 6}px` }}
+                              />
+                            ))}
+                            <div className="relative flex flex-col items-center">
+                              {step.group ? (
+                                // A group has no event of its own: an expand / collapse arrow, not a status dot
+                                <button
+                                    type="button"
+                                    className="mt-0.5 flex items-center text-indigo-600 hover:text-indigo-800"
+                                    aria-expanded={!collapsed}
+                                    title={collapsed ? 'Show its steps' : 'Hide its steps'}
+                                    onClick={() => toggleGroup(step)}
+                                  >
+                                    {collapsed
+                                      ? <ChevronRightIcon className="h-4 w-4" />
+                                      : <ChevronDownIcon className="h-4 w-4" />}
+                                  </button>
+                              ) : isNotStarted ? (
                                 <div className="mt-1 h-3.5 w-3.5 rounded-full border-2 border-gray-300 bg-white" />
                               ) : (
                                 <div className={`mt-1 ${isSubStep ? 'h-3 w-3' : 'h-3.5 w-3.5'} rounded-full ${info.dot}`} />
                               )}
                               {i < arr.length - 1 && <div className="w-px flex-1 bg-gray-200" />}
                             </div>
-                            <div className="min-w-0 pb-1 flex-1">
+                            <div className="relative min-w-0 pb-1 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className={`${isSubStep ? 'text-sm' : 'text-base'} font-semibold ${isNotStarted ? 'text-gray-400' : 'text-gray-900'}`}>{step.stepName}</p>
-                                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${info.bg} ${info.text}`}>
-                                  {statusLabel}
-                                </span>
+                                <p className={`${
+                                  step.group
+                                    ? `text-sm font-bold uppercase tracking-wide ${isNotStarted ? 'text-gray-400' : 'text-indigo-700'}`
+                                    : `${isSubStep ? 'text-sm' : 'text-base'} font-semibold ${isNotStarted ? 'text-gray-400' : 'text-gray-900'}`
+                                }`}>{step.stepName}</p>
+                                {/* A group's status is its chip below, not a badge */}
+                                {!step.group && (
+                                  <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${info.bg} ${info.text}`}>
+                                    {statusLabel}
+                                  </span>
+                                )}
                                 {step.group && (
-                                  <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700">
-                                    Step group
+                                  <button type="button" onClick={() => toggleGroup(step)}
+                                    className="text-xs text-indigo-600 hover:underline">
+                                    {collapsed ? `Show ${groupInstance?.totalSteps ?? ''} steps` : 'Hide steps'}
+                                  </button>
+                                )}
+                                {dotSegments.length > 0 && (
+                                  <span className="flex items-center gap-1" aria-label="Its steps">
+                                    {dotSegments.map((seg, k) => (
+                                      <span key={k} className="flex items-center gap-1">
+                                        {k > 0 && <span aria-hidden="true" className="mx-0.5 h-3 w-px bg-gray-300" />}
+                                        <span className={`flex items-center gap-1 ${seg.name ? 'rounded-full bg-indigo-50 px-1 py-0.5 ring-1 ring-inset ring-indigo-200' : ''}`}
+                                          title={seg.name ?? undefined}>
+                                          {seg.rows.map((r, m) => {
+                                            const st = JOURNEY_STATUS[r.status as JourneyDisplayStatus] ?? JOURNEY_STATUS.NOT_STARTED;
+                                            return (
+                                              <span key={m} title={`${seg.name ? `${seg.name} › ` : ''}${r.stepName}: ${st.label}`}
+                                                className={`h-2.5 w-2.5 rounded-full ${r.status === 'NOT_STARTED' ? 'border-2 border-gray-300 bg-white' : st.dot}`} />
+                                            );
+                                          })}
+                                        </span>
+                                      </span>
+                                    ))}
                                   </span>
                                 )}
                                 {step.requiredBehavior === 'must' && (
@@ -776,3 +868,18 @@ export default function PatientDetail() {
     </>
   );
 }
+
+/** The step-group rows that enclose row i of a journey: a group's steps follow its row with a greater depth. */
+function enclosingGroups<T extends { group?: boolean; depth?: number }>(rows: T[], i: number): T[] {
+  const groups: T[] = [];
+  let level = rows[i].depth ?? 0;
+  for (let j = i - 1; j >= 0 && level > 0; j--) {
+    const d = rows[j].depth ?? 0;
+    if (d < level) {
+      if (rows[j].group) groups.push(rows[j]);
+      level = d;
+    }
+  }
+  return groups;
+}
+
