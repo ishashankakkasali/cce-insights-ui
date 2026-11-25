@@ -559,10 +559,9 @@ export default function PatientDetail() {
                         const isSubStep = depth > 0;
                         const isDeviation = displayStatus === 'DEVIATION';
                         const isNotStarted = displayStatus === 'NOT_STARTED';
-                        const isOutstandingMandatory = step.requiredBehavior === 'must' && !isDeviation
-                          && displayStatus !== 'COMPLETED';
                         // The groups this row sits in: a group's steps follow it, one level deeper
                         const enclosing = enclosingGroups(arr, i);
+                        const enclosingGroupDepths = enclosing.map((r) => r.depth ?? 0);
                         // A step of a collapsed group is hidden
                         if (enclosing.some(isCollapsed)) return null;
                         const collapsed = isCollapsed(step);
@@ -585,13 +584,18 @@ export default function PatientDetail() {
                         return (
                           <div
                             key={`${proto.protocolInstanceId}-j-${i}`}
-                            className={`relative flex gap-3 py-2.5 ${
-                              isDeviation ? 'rounded-lg bg-red-50 border border-red-200'
-                                : isOutstandingMandatory ? 'rounded-lg bg-purple-50 border border-purple-100'
-                                : ''
-                            }`}
+                            className="relative flex gap-3 py-2.5"
                             style={{ paddingLeft: `${depth * 24}px` }}
                           >
+                            {/* A line down the side of a group's steps, one per enclosing group */}
+                            {enclosingGroupDepths.map((g) => (
+                              <div
+                                key={`rail-${g}`}
+                                aria-hidden="true"
+                                className="pointer-events-none absolute inset-y-0 w-0.5 rounded bg-indigo-200"
+                                style={{ left: `${g * 24 + 6}px` }}
+                              />
+                            ))}
                             <div className="relative flex flex-col items-center">
                               {step.group ? (
                                 // A group has no event of its own: an expand / collapse arrow, not a status dot
