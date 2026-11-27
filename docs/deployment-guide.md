@@ -95,6 +95,7 @@ value.
 | `VITE_KEYCLOAK_CLIENT_ID` | `cce-insights-ui` | Public OIDC client (PKCE S256) |
 | `VITE_AUTH_TOKEN` | _(empty)_ | Build time only: static Bearer token fallback for local testing without a login |
 | `VITE_POLLING_INTERVAL` | `60000` | Dashboard auto-refresh interval (ms) |
+| `VITE_HANDOFF_POLLING_INTERVAL` | `10000` | Dashboard "Referral Hand-off Deviations" refresh interval (ms) |
 | `VITE_DEFAULT_DATE_RANGE_DAYS` | `90` | Default date range filter |
 | `VITE_TIMEZONE` | `UTC` | IANA display timezone (e.g. `Africa/Kigali`). API timestamps are shown in this zone, and the selected date range is converted from it to UTC before being sent (the insights-service is UTC only). Invalid names fall back to UTC |
 
