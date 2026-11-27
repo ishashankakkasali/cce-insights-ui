@@ -34,17 +34,10 @@ export interface PractitionerComplianceMetric {
   below75: number;
 }
 
-export interface ConsentComplianceMetric {
-  totalReceived: number;
-  totalVerified: number;
-  verificationRate: number;
-}
-
 export interface DashboardComplianceSummary {
   patients: ComplianceMetric;
   facilities: FacilityComplianceMetric;
   practitioners: PractitionerComplianceMetric;
-  consent: ConsentComplianceMetric;
 }
 
 export function getDashboardOverview(params?: {
@@ -60,6 +53,39 @@ export function getDashboardComplianceSummary(params?: {
   endDate?: string;
 }): Promise<DashboardComplianceSummary> {
   return apiGet('/dashboard/compliance-summary', {
+    startDate: params?.startDate,
+    endDate: params?.endDate,
+  });
+}
+
+/** One referral hand-off (a protocol step with a deadline) over the date range; counts are hand-offs. */
+export interface HandoffMetric {
+  key: string;
+  label: string;
+  description: string;
+  actionId: string;
+  /** Where the patient is handed from and to; the same place for a step within one facility. */
+  fromPlace?: string | null;
+  toPlace?: string | null;
+  /** Hand-offs due in the range: completed on time or late, or outstanding. */
+  total: number;
+  completed: number;
+  onTime: number;
+  completedLate: number;
+  /** Outstanding past the deadline. */
+  overdueOpen: number;
+  /** Outstanding, deadline not reached yet. */
+  pending: number;
+  /** completedLate + overdueOpen. */
+  deviations: number;
+  /** Share of judged hand-offs (total - pending) that missed the deadline, in %. */
+  deviationRate: number;
+  /** Median minutes from the step the hand-off starts from; null when it cannot be measured. */
+  medianMinutes: number | null;
+}
+
+export function getDashboardHandoffs(params?: { startDate?: string; endDate?: string }): Promise<HandoffMetric[]> {
+  return apiGet('/dashboard/handoffs', {
     startDate: params?.startDate,
     endDate: params?.endDate,
   });
